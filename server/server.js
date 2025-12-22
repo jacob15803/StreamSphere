@@ -20,10 +20,13 @@ mongoose
 // Models
 require("./models/Movie");
 require("./models/User");
+require("./models/Series")
 
 // Routes
 require("./routes/movieRoutes")(app);
-require("./routes/userRoutes")(app); // To Learn CRUD Oprations
+require("./routes/userRoutes")(app);
+require("./routes/seriesRoutes")(app);
+require("./routes/authRoutes")(app);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
