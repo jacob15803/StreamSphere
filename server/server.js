@@ -20,6 +20,7 @@ mongoose
 // Models
 require("./models/Movie");
 require("./models/User");
+require("./models/Series")
 
 //Middle
 require("./middleware/requireMail")
@@ -30,6 +31,7 @@ require("./routes/movieRoutes")(app);
 require("./routes/userRoutes")(app); // To Learn CRUD Oprations
 require("./routes/authRoutes")(app);
 require("./routes/streamRoutes")(app);
+require("./routes/seriesRoutes")(app);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

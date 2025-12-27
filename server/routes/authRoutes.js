@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const User = mongoose.model("users");
 const jwt = require("jsonwebtoken"); // npm i jsonwebtoken
 
-const requireLogin = require("../middleware/requireMail")
+const requireLogin = require("../middleware/requireLogin");
 
 const otpLength = 6;
 
