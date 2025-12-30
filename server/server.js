@@ -18,15 +18,10 @@ mongoose
   });
 
 // Models
-require("./models/Movie");
-require("./models/User");
-require("./models/Series")
+require("./models/Media");
 
 // Routes
-require("./routes/movieRoutes")(app);
-require("./routes/userRoutes")(app);
-require("./routes/seriesRoutes")(app);
-require("./routes/authRoutes")(app);
+require("./routes/mediaRoutes")(app);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
