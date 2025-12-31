@@ -34,6 +34,10 @@ require("./routes/authRoutes")(app);
 require("./routes/streamRoutes")(app);
 require("./routes/seriesRoutes")(app);
 require("./routes/continueWatchingRoutes")(app);
+require("./models/Media");
+
+// Routes
+require("./routes/mediaRoutes")(app);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
