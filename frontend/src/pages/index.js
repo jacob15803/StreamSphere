@@ -1,13 +1,20 @@
-import Head from 'next/head';
-import Hero from '@/components/Hero';
-import { mediaService } from '@/services/mediaService';
-import { useEffect, useState } from 'react';
-import MediaCard from '@/components/common/MediaCard';
-import Footer from '@/components/Footer';
-import MediaRow from '@/components/MediaRow';
-import { Box } from '@mui/material';
+// src/pages/index.js
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import Head from "next/head";
+import { Box } from "@mui/material";
+import Hero from "@/components/Hero";
+import MediaRow from "@/components/MediaRow";
+import MediaCard from "@/components/common/MediaCard";
+import Footer from "@/components/Footer";
+import { mediaService } from "@/services/mediaService";
+import { getContinueWatching } from "@/redux/actions/watchHistoryActions";
 
 export default function Home() {
+  const dispatch = useDispatch();
+  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { continueWatching } = useSelector((state) => state.watchHistory);
+
   const [topRatedMovies, setTopRatedMovies] = useState([]);
   const [topRatedSeries, setTopRatedSeries] = useState([]);
   const [actionMovies, setActionMovies] = useState([]);
@@ -24,32 +31,39 @@ export default function Home() {
         const seriesData = await mediaService.getTopRatedSeries(10);
         setTopRatedSeries(seriesData.data);
 
-        const actionData = await mediaService.getMoviesByGenre('Action');
+        const actionData = await mediaService.getMoviesByGenre("Action");
         setActionMovies(actionData.data);
 
-        const thrillerData = await mediaService.getMediaByGenre('Thriller');
+        const thrillerData = await mediaService.getMediaByGenre("Thriller");
         setThrillerContent(thrillerData.data);
 
-        const dramaData = await mediaService.getMediaByGenre('Drama');
+        const dramaData = await mediaService.getMediaByGenre("Drama");
         setDramaContent(dramaData.data);
 
-        const sciFiData = await mediaService.getMediaByGenre('Sci-Fi');
+        const sciFiData = await mediaService.getMediaByGenre("Sci-Fi");
         setSciFiContent(sciFiData.data);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error("Error fetching data:", error);
       }
     };
 
     fetchData();
   }, []);
 
+  useEffect(() => {
+    // Fetch continue watching if user is authenticated
+    if (isAuthenticated) {
+      dispatch(getContinueWatching());
+    }
+  }, [isAuthenticated, dispatch]);
+
   return (
     <>
       <Head>
         <title>StreamSphere - One Platform. Infinite Worlds.</title>
-        <meta 
-          name="description" 
-          content="Watch movies, shows, and originals from across the globe" 
+        <meta
+          name="description"
+          content="Watch movies, shows, and originals from across the globe"
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
@@ -58,52 +72,77 @@ export default function Home() {
       <Hero />
 
       {/* Main Content - All Sections */}
-      <Box 
-        sx={{ 
-          mt: -14, 
-          position: 'relative',
+      <Box
+        sx={{
+          mt: -14,
+          position: "relative",
           zIndex: 10,
         }}
       >
+        {/* Continue Watching - Only show if user is authenticated and has items */}
+        {isAuthenticated && continueWatching.length > 0 && (
+          <MediaRow title="Continue Watching">
+            {continueWatching.map((item) => (
+              <MediaCard
+                key={`${item.media._id}-${item.seasonNumber}-${item.episodeNumber}`}
+                media={item.media}
+                showWatchlistButton={true}
+              />
+            ))}
+          </MediaRow>
+        )}
+
         {/* Top Rated Movies */}
         <MediaRow title="Top Rated Movies">
           {topRatedMovies.map((movie) => (
-            <MediaCard key={movie.id} media={movie} />
+            <MediaCard
+              key={movie._id}
+              media={movie}
+              showWatchlistButton={true}
+            />
           ))}
         </MediaRow>
 
         {/* Top Rated Series */}
         <MediaRow title="Top Rated Series">
           {topRatedSeries.map((series) => (
-            <MediaCard key={series.id} media={series} />
+            <MediaCard
+              key={series._id}
+              media={series}
+              showWatchlistButton={true}
+            />
           ))}
         </MediaRow>
 
         {/* Action Movies */}
         <MediaRow title="Action Movies">
           {actionMovies.map((movie) => (
-            <MediaCard key={movie.id} media={movie} />
+            <MediaCard
+              key={movie._id}
+              media={movie}
+              showWatchlistButton={true}
+            />
           ))}
         </MediaRow>
 
         {/* Thriller Content */}
         <MediaRow title="Thriller">
           {thrillerContent.map((item) => (
-            <MediaCard key={item.id} media={item} />
+            <MediaCard key={item._id} media={item} showWatchlistButton={true} />
           ))}
         </MediaRow>
 
         {/* Drama Collection */}
         <MediaRow title="Drama">
           {dramaContent.map((item) => (
-            <MediaCard key={item.id} media={item} />
+            <MediaCard key={item._id} media={item} showWatchlistButton={true} />
           ))}
         </MediaRow>
 
         {/* Sci-Fi Adventures */}
         <MediaRow title="Sci-Fi Adventures">
           {sciFiContent.map((item) => (
-            <MediaCard key={item.id} media={item} />
+            <MediaCard key={item._id} media={item} showWatchlistButton={true} />
           ))}
         </MediaRow>
       </Box>
