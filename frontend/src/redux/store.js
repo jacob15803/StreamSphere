@@ -8,14 +8,21 @@
 // Step 7: Call State using useDispatch
 // Step 8: Select Reducer Slice using useSelector
 
-const { configureStore } = require("@reduxjs/toolkit");
+// const { configureStore } = require("@reduxjs/toolkit");
 import { themeReducer } from "./reducer/themeReducer";
 import { mediaReducer } from "./reducer/mediaReducer";
+import { configureStore } from "@reduxjs/toolkit";
+import { authReducer } from "./reducer/authReducer";
+import { watchlistReducer } from "./reducer/watchlistReducer";
+import { watchHistoryReducer } from "./reducer/watchHistoryReducer";
 
 export const store = configureStore({
-    reducer: {
-        activeTheme: themeReducer,
-        media: mediaReducer,
-        // moviesData: movieReducer
-    }
-})
+  reducer: {
+    activeTheme: themeReducer,
+    media: mediaReducer,
+    // moviesData: movieReducer
+    auth: authReducer,
+    watchlist: watchlistReducer,
+    watchHistory: watchHistoryReducer,
+  },
+});
