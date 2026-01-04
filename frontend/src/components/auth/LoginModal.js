@@ -23,15 +23,16 @@ export default function LoginModal({ open, onClose }) {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, login } = useAuth();
 
   useEffect(() => {
-    // Redirect if already authenticated
-    if (isAuthenticated && open) {
+    // Only redirect if already authenticated when modal opens (not during login flow)
+    // This prevents redirecting during the OTP verification or onboarding process
+    if (isAuthenticated && open && step === 'login') {
       router.push('/onboarding');
       onClose();
     }
-  }, [isAuthenticated, open, router, onClose]);
+  }, [isAuthenticated, open, router, onClose, step]);
 
   const handleOTPSent = (userEmail) => {
     setEmail(userEmail);
@@ -39,14 +40,18 @@ export default function LoginModal({ open, onClose }) {
   };
 
   const handleOTPVerified = ({ email: userEmail, token: userToken, isNewUser }) => {
+    console.log('handleOTPVerified called - isNewUser:', isNewUser);
     setEmail(userEmail);
     setToken(userToken);
     
     if (isNewUser) {
       // Show onboarding form for new users
+      // Token is already stored in OTPForm, but we prevent redirect via step check
+      console.log('Setting step to onboarding');
       setStep('onboarding');
     } else {
-      // Redirect existing users directly
+      // For existing users, redirect (token already stored in OTPForm)
+      console.log('Redirecting existing user');
       router.push('/onboarding');
       onClose();
     }
@@ -76,7 +81,9 @@ export default function LoginModal({ open, onClose }) {
     onClose();
   };
 
-  if (isAuthenticated) {
+  // Only hide modal if authenticated AND not in onboarding flow
+  // This allows onboarding form to show even when authenticated
+  if (isAuthenticated && step !== 'onboarding' && step !== 'otp') {
     return null; // Will redirect
   }
 

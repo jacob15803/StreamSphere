@@ -28,10 +28,12 @@ export default function OTPForm({ email, onBack, onOTPVerified, setError, setMes
       console.log('Verify OTP Response:', response.data);
 
       if (response.data.token) {
-        // Store token first
+        console.log('OTP Verified - isNewUser:', response.data.isNewUser);
+        // Store token first (needed for authenticated API calls like onboarding)
         await login(response.data.token);
         
         // Call callback with verification result
+        // The modal will handle the flow based on isNewUser flag
         onOTPVerified({
           email,
           token: response.data.token,

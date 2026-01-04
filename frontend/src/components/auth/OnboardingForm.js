@@ -10,8 +10,10 @@ import {
 import { ArrowForward as ArrowForwardIcon } from '@mui/icons-material';
 import api from '@/lib/api';
 import { useRouter } from 'next/router';
+import { useAuth } from '@/context/AuthContext';
 
 export default function OnboardingForm({ email, token, onComplete, setError, setMessage, error, message }) {
+  const { login } = useAuth();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,6 +32,7 @@ export default function OnboardingForm({ email, token, onComplete, setError, set
 
       if (response.data.message === 'Onboarding completed successfully') {
         setMessage('Onboarding completed successfully!');
+        // Token is already stored from OTP verification, just redirect
         // Wait a moment to show success message, then redirect
         setTimeout(() => {
           router.push('/onboarding');
