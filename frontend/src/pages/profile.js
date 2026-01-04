@@ -1,20 +1,14 @@
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import {
-  Box,
-  Container,
-  Typography,
-  Paper,
-  Avatar,
-  CircularProgress,
-  Button,
-  Divider,
-} from '@mui/material';
-import { Person as PersonIcon, Email as EmailIcon, Phone as PhoneIcon } from '@mui/icons-material';
+import { Box, Container, CircularProgress } from '@mui/material';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import Footer from '@/components/Footer';
+import ProfileHeader from '@/components/profile/ProfileHeader';
+import AccountInformationPanel from '@/components/profile/AccountInformationPanel';
+import LogoutButton from '@/components/profile/LogoutButton';
+import FavoritesSection from '@/components/profile/FavoritesSection';
 
 export default function Profile() {
   const { isAuthenticated, loading: authLoading, logout } = useAuth();
@@ -22,6 +16,7 @@ export default function Profile() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [favorites, setFavorites] = useState([]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -45,8 +40,21 @@ export default function Profile() {
 
     if (isAuthenticated) {
       fetchUser();
+      // TODO: Fetch favorites when API is available
+      // fetchFavorites();
     }
   }, [isAuthenticated]);
+
+  const handleUpdateUser = async (updatedUser) => {
+    try {
+      // TODO: Implement update user API call
+      // await api.put(`/api/v1/update/user/${user._id}`, updatedUser);
+      setUser({ ...user, ...updatedUser });
+    } catch (error) {
+      console.error('Error updating user:', error);
+      setError('Failed to update profile');
+    }
+  };
 
   if (authLoading || loading) {
     return (
@@ -56,9 +64,10 @@ export default function Profile() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          backgroundColor: '#000',
         }}
       >
-        <CircularProgress />
+        <CircularProgress sx={{ color: '#ffd700' }} />
       </Box>
     );
   }
@@ -78,124 +87,37 @@ export default function Profile() {
         sx={{
           minHeight: '100vh',
           backgroundColor: '#000',
-          pt: { xs: 4, md: 8 },
+          pt: { xs: 10, md: 12 },
           pb: 8,
+          position: 'relative',
+          backgroundImage: 'url("/hero_bg.jpg")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundAttachment: 'fixed',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            zIndex: 0,
+          },
         }}
       >
-        <Container maxWidth="md">
-          <Paper
-            elevation={3}
-            sx={{
-              p: { xs: 3, md: 5 },
-              backgroundColor: '#1a1a1a',
-              color: '#fff',
-              borderRadius: 2,
-            }}
-          >
-            {/* Header */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, gap: 3 }}>
-              <Avatar
-                sx={{
-                  width: { xs: 80, md: 100 },
-                  height: { xs: 80, md: 100 },
-                  backgroundColor: '#ffd700',
-                  color: '#000',
-                  fontSize: { xs: '2rem', md: '2.5rem' },
-                }}
-              >
-                {user?.name?.charAt(0)?.toUpperCase() || <PersonIcon />}
-              </Avatar>
-              <Box>
-                <Typography
-                  variant="h4"
-                  component="h1"
-                  sx={{
-                    fontWeight: 600,
-                    color: '#ffd700',
-                    mb: 1,
-                  }}
-                >
-                  {user?.name || 'User'}
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                  Profile Information
-                </Typography>
-              </Box>
-            </Box>
+        <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+          <ProfileHeader user={user} />
 
-            <Divider sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', mb: 4 }} />
+          <AccountInformationPanel user={user} onUpdate={handleUpdateUser} />
 
-            {/* User Details */}
-            {error ? (
-              <Typography color="error" sx={{ mb: 2 }}>
-                {error}
-              </Typography>
-            ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {/* Email */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <EmailIcon sx={{ color: '#ffd700', fontSize: 28 }} />
-                  <Box>
-                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 0.5 }}>
-                      Email
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: '#fff' }}>
-                      {user?.email || 'Not provided'}
-                    </Typography>
-                  </Box>
-                </Box>
+          <LogoutButton onLogout={logout} />
 
-                {/* Phone */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <PhoneIcon sx={{ color: '#ffd700', fontSize: 28 }} />
-                  <Box>
-                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 0.5 }}>
-                      Phone
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: '#fff' }}>
-                      {user?.phone || 'Not provided'}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
-            )}
-
-            <Divider sx={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', my: 4 }} />
-
-            {/* Actions */}
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-              <Button
-                variant="outlined"
-                onClick={() => router.push('/')}
-                sx={{
-                  color: '#fff',
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
-                  '&:hover': {
-                    borderColor: '#ffd700',
-                    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-                  },
-                }}
-              >
-                Back to Home
-              </Button>
-              <Button
-                variant="contained"
-                onClick={logout}
-                sx={{
-                  backgroundColor: '#d32f2f',
-                  '&:hover': {
-                    backgroundColor: '#b71c1c',
-                  },
-                }}
-              >
-                Logout
-              </Button>
-            </Box>
-          </Paper>
+          <FavoritesSection favorites={favorites} />
         </Container>
       </Box>
       <Footer />
     </>
   );
 }
-
