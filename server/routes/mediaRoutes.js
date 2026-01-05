@@ -52,6 +52,7 @@ router.get('/', async (req, res) => {
 
     // Execute query
     const media = await Media.find(filter)
+      .populate('genres', 'name')
       .sort(sort)
       .limit(parseInt(limit))
       .skip(skip);
@@ -80,7 +81,7 @@ router.get('/', async (req, res) => {
 // GET single media by ID
 router.get('/:id', async (req, res) => {
   try {
-    const media = await Media.findById(req.params.id);
+    const media = await Media.findById(req.params.id).populate('genres', 'name');
     
     if (!media) {
       return res.status(404).json({

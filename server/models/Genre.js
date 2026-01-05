@@ -12,19 +12,19 @@ const genreSchema = new Schema({
 
 mongoose.model("genres", genreSchema);
 
-// [
-//   "Action",
-//   "Adventure",
-//   "Comedy",
-//   "Drama",
-//   "Thriller",
-//   "Horror",
-//   "Romance",
-//   "Science Fiction",
-//   "Fantasy",
-//   "Mystery",
-//   "Crime",
-//   "Animation",
-//   "Family",
-//   "Documentary"
-// ]
+// db.genres.insertMany([
+//   { name: "Action" },
+//   { name: "Adventure" },
+//   { name: "Comedy" },
+//   { name: "Drama" },
+//   { name: "Thriller" },
+//   { name: "Horror" },
+//   { name: "Romance" },
+//   { name: "Science Fiction" },
+//   { name: "Fantasy" },
+//   { name: "Mystery" },
+//   { name: "Crime" },
+//   { name: "Animation" },
+//   { name: "Family" },
+//   { name: "Documentary" }
+// ]);

@@ -37,6 +37,7 @@ require("./routes/authRoutes")(app);
 require("./routes/continueWatchingRoutes")(app);
 require("./models/Media");
 require("./routes/genreRoutes")(app);
+require("./routes/searchRoutes")(app);
 
 // Routes
 require("./routes/mediaRoutes")(app);

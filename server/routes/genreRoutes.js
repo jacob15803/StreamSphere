@@ -4,14 +4,19 @@ const mongoose = require("mongoose");
 const Genre = mongoose.model("genres");
 
 module.exports = (app) => {
-  // Get Genres
-  app.post("/api/v1/genres", async (req, res) => {
-    //console.log("Get all GENRE");
+  // Get all Genres
+  app.get("/api/v1/genres", async (req, res) => {
     try {
-        const { genres } = await Genre.find({ }, "name");
-        res.json( genres );
+        const genres = await Genre.find({}, "name");
+        res.json(genres);
     } catch (error) {
-        res.status(500).json({ message: err.message });
+        res.status(500).json({ message: error.message });
     }
-    });
+  });
 };
+
+
+
+
+
+
