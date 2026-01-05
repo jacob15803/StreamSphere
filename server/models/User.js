@@ -9,7 +9,7 @@ const userSchema = new Schema({
    unique: true },
   phone: { type: String },
   otp: { type: String },
-  subscriptionType: { type: String },
+  subscriptionType: { type: String }, //basic / premium
   preferences: {
     favoriteGenres: [{
       type: Schema.Types.ObjectId,
