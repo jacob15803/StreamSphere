@@ -18,6 +18,8 @@ export default function Hero({ slides = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const { isAuthenticated } = useAuth();
+  const router = useRouter();
 
   // Auto-play functionality
   useEffect(() => {
