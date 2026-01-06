@@ -8,14 +8,7 @@ const port = process.env.PORT || 5001;
 const app = express();
 
 // CORS Configuration - MUST be before other middleware
-app.use(
-  cors({
-    origin: ["http://localhost:3000", "http://localhost:3001"], // Allow your frontend origins
-    credentials: true, // Allow cookies and authorization headers
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+app.use(cors());
 
 // Body parser middleware
 app.use(express.json());
