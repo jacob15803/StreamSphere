@@ -1,6 +1,7 @@
 // backend/routes/watchlistRoutes.js
 const mongoose = require("mongoose");
 const { Watchlist } = require("../models/Watchlist"); // Import from model file
+const { Media } = require("../models/Media"); // Import Media model for recommendations
 const requireLogin = require("../middleware/requireMail");
 
 module.exports = (app) => {
@@ -109,6 +110,71 @@ module.exports = (app) => {
       });
     } catch (error) {
       console.error("Get watchlist error:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  });
+
+  // Get recommendations based on watchlist genres
+  app.get("/api/v2/watchlist/recommendations", requireLogin, async (req, res) => {
+    try {
+      const userId = req.user._id || req.user.id;
+      const { limit = 20 } = req.query;
+
+      console.log("Fetching recommendations for user:", userId);
+
+      // Get user's watchlist with populated genres
+      const watchlistItems = await Watchlist.find({ userId })
+        .populate({
+          path: "mediaId",
+          populate: { path: "genres", select: "_id name" },
+        })
+        .sort({ addedAt: -1 });
+
+      // Extract all unique genre IDs from watchlist
+      const genreIds = new Set();
+      const watchlistMediaIds = new Set();
+
+      watchlistItems.forEach((item) => {
+        if (item.mediaId && item.mediaId.genres) {
+          item.mediaId.genres.forEach((genre) => {
+            if (genre && genre._id) {
+              genreIds.add(genre._id.toString());
+            }
+          });
+          watchlistMediaIds.add(item.mediaId._id.toString());
+        }
+      });
+
+      // If no genres found in watchlist, return empty array
+      if (genreIds.size === 0) {
+        return res.json({
+          success: true,
+          data: [],
+          message: "No genres found in watchlist",
+        });
+      }
+
+      // Find media that matches any of the genres, excluding items already in watchlist
+      const recommendations = await Media.find({
+        genres: { $in: Array.from(genreIds) },
+        _id: { $nin: Array.from(watchlistMediaIds) },
+      })
+        .populate("genres", "name description")
+        .sort({ rating: -1, releaseDate: -1 })
+        .limit(parseInt(limit));
+
+      console.log(`Found ${recommendations.length} recommendations`);
+
+      res.json({
+        success: true,
+        data: recommendations,
+        count: recommendations.length,
+      });
+    } catch (error) {
+      console.error("Get recommendations error:", error);
       res.status(500).json({
         success: false,
         message: error.message,
