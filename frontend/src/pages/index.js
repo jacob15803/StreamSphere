@@ -21,6 +21,7 @@ export default function Home() {
   const [dramaContent, setDramaContent] = useState([]);
   const [sciFiContent, setSciFiContent] = useState([]);
   const [continueWatching, setContinueWatching] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
 
   // Loading and error states
   const [loading, setLoading] = useState(true);
@@ -121,6 +122,25 @@ export default function Home() {
     fetchContinueWatching();
   }, [isAuthenticated]);
 
+  // Fetch recommendations based on watchlist
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      if (isAuthenticated) {
+        try {
+          const recommendationsData = await mediaService.getRecommendations(20);
+          if (recommendationsData.success && recommendationsData.data) {
+            setRecommendations(recommendationsData.data);
+          }
+        } catch (error) {
+          console.error("Error fetching recommendations:", error);
+          // Don't show error to user, just silently fail
+        }
+      }
+    };
+
+    fetchRecommendations();
+  }, [isAuthenticated]);
+
   // Show loading state
   if (loading) {
     return (
@@ -185,6 +205,21 @@ export default function Home() {
             ))}
           </MediaRow>
         )}
+
+        {/* Recommendations Based on Your Watchlist */}
+        {isAuthenticated &&
+          recommendations &&
+          recommendations.length > 0 && (
+            <MediaRow title="Recommended For You">
+              {recommendations.map((item) => (
+                <MediaCard
+                  key={item._id}
+                  media={item}
+                  showWatchlistButton={true}
+                />
+              ))}
+            </MediaRow>
+          )}
 
         {/* Top Rated Movies */}
         {topRatedMovies && topRatedMovies.length > 0 && (
