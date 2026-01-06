@@ -3,23 +3,25 @@ const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
 const userSchema = new Schema({
-  name: {type: String},
-  email: { type: String,
-   required: true,
-   unique: true },
+  name: { type: String },
+  email: { type: String, required: true, unique: true },
   phone: { type: String },
   otp: { type: String },
   subscriptionType: { type: String }, //basic / premium
   preferences: {
-    favoriteGenres: [{
-      type: Schema.Types.ObjectId,
-      ref: "genres"
-    }],
-    favoriteMedia: [{
-      type: Schema.Types.ObjectId,
-      ref: "Media"
-    }]
-  }
+    favoriteGenres: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Genre",
+      },
+    ],
+    favoriteMedia: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Media",
+      },
+    ],
+  },
 });
 
 mongoose.model("users", userSchema);
