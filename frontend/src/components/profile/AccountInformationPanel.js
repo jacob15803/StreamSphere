@@ -116,37 +116,6 @@ export default function AccountInformationPanel({ user, onUpdate }) {
           />
         </Grid>
 
-        <Grid item xs={12} md={6}>
-          <Box>
-            <Typography
-              variant="body2"
-              sx={{
-                color: 'rgba(255, 255, 255, 0.65)',
-                mb: 1.5,
-                fontSize: '0.875rem',
-                fontWeight: 400,
-              }}
-            >
-              Password
-            </Typography>
-            <Button
-              sx={{
-                color: '#ffd700',
-                textTransform: 'none',
-                fontSize: '1rem',
-                p: 0,
-                minWidth: 'auto',
-                fontWeight: 400,
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                  textDecoration: 'underline',
-                },
-              }}
-            >
-              Change Password
-            </Button>
-          </Box>
-        </Grid>
 
         <Grid item xs={12} md={6}>
           <AccountField
