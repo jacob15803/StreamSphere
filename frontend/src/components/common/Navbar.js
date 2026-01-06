@@ -132,7 +132,7 @@ export default function Navbar() {
               </Box>
             </Link>
 
-            <Link href="/about" style={{ textDecoration: "none" }}>
+            {/* <Link href="/about" style={{ textDecoration: "none" }}>
               <Box
                 component="span"
                 sx={{
@@ -144,7 +144,7 @@ export default function Navbar() {
               >
                 About
               </Box>
-            </Link>
+            </Link> */}
 
             <SearchBar />
           </Box>
