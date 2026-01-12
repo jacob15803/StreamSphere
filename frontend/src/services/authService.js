@@ -1,5 +1,7 @@
 // src/services/authService.js
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+
 // Token Management Utilities
 export const authUtils = {
   setToken: (token) => {
@@ -51,7 +53,7 @@ export const authUtils = {
   },
 };
 
-// API Request Helper
+// API Request Helper - FIXED VERSION
 const apiRequest = async (endpoint, options = {}) => {
   const token = authUtils.getToken();
 
@@ -65,22 +67,31 @@ const apiRequest = async (endpoint, options = {}) => {
   };
 
   try {
-    const response = await fetch(endpoint, config);
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     const data = await response.json();
 
+    // Handle 401 Unauthorized - session expired
     if (response.status === 401) {
       authUtils.clearAuth();
-      window.location.href = "/";
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
       throw new Error("Session expired. Please login again.");
     }
 
+    // For non-OK responses, throw error with message but don't log to console
+    // This prevents Next.js from showing runtime errors
     if (!response.ok) {
-      throw new Error(data.message || "Something went wrong");
+      const error = new Error(data.message || "Something went wrong");
+      error.statusCode = response.status;
+      error.data = data;
+      throw error;
     }
 
     return data;
   } catch (error) {
-    console.error("API Request Error:", error);
+    // Don't log the error to console to prevent Next.js runtime error overlay
+    // Just re-throw it so the action can handle it
     throw error;
   }
 };

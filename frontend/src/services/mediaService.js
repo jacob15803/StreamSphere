@@ -1,11 +1,41 @@
-const API_BASE_URL = "/api/v2";
+// src/services/mediaService.js
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+const MEDIA_ENDPOINT = `${API_BASE_URL}/api/v2`;
 
 export const mediaService = {
+  // Get Single Media by ID
+  getSingleMedia: async (id) => {
+    try {
+      const response = await fetch(`${MEDIA_ENDPOINT}/${id}`);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching media:", error);
+      throw error;
+    }
+  },
+
+  // Get Episodes for a Series
+  getEpisodes: async (id, seasonNumber = null) => {
+    try {
+      const url = seasonNumber
+        ? `${MEDIA_ENDPOINT}/${id}/seasons/${seasonNumber}`
+        : `${MEDIA_ENDPOINT}/${id}/episodes`;
+      const response = await fetch(url);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching episodes:", error);
+      throw error;
+    }
+  },
+
   // Get Top Rated Movies
   getTopRatedMovies: async (limit = 10) => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/top/rated?type=movie&limit=${limit}`
+        `${MEDIA_ENDPOINT}/top/rated?type=movie&limit=${limit}`
       );
       const data = await response.json();
       return data;
@@ -19,7 +49,7 @@ export const mediaService = {
   getTopRatedSeries: async (limit = 10) => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/top/rated?type=series&limit=${limit}`
+        `${MEDIA_ENDPOINT}/top/rated?type=series&limit=${limit}`
       );
       const data = await response.json();
       return data;
@@ -32,7 +62,7 @@ export const mediaService = {
   // Get Movies by Genre
   getMoviesByGenre: async (genre) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/genre/${genre}`);
+      const response = await fetch(`${MEDIA_ENDPOINT}/genre/${genre}`);
       const data = await response.json();
       return data;
     } catch (error) {
@@ -45,7 +75,7 @@ export const mediaService = {
   getSeriesByGenre: async (genre) => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}?type=series&genre=${genre}`
+        `${MEDIA_ENDPOINT}?type=series&genre=${genre}`
       );
       const data = await response.json();
       return data;
@@ -58,7 +88,7 @@ export const mediaService = {
   // Get Media by Genre (Both Movies & Series)
   getMediaByGenre: async (genre) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/genre/${genre}`);
+      const response = await fetch(`${MEDIA_ENDPOINT}/genre/${genre}`);
       const data = await response.json();
       return data;
     } catch (error) {
@@ -67,10 +97,12 @@ export const mediaService = {
     }
   },
 
-  // NEW: Get Featured/Slider Content (top rated with slider posters)
+  // Get Featured/Slider Content (top rated with slider posters)
   getFeaturedContent: async (limit = 5) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/top/rated?limit=${limit}`);
+      const response = await fetch(
+        `${MEDIA_ENDPOINT}/top/rated?limit=${limit}`
+      );
       const data = await response.json();
       // Filter items that have sliderPosterUrl
       const featured = data.data?.filter((item) => item.sliderPosterUrl) || [];

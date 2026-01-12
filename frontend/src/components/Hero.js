@@ -1,5 +1,6 @@
 // src/components/Hero.js
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import { Box, Typography, IconButton } from "@mui/material";
 import {
   ChevronLeft,
@@ -10,6 +11,7 @@ import {
 import Button from "@/components/common/Button";
 
 export default function Hero({ slides = [] }) {
+  const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
@@ -40,6 +42,20 @@ export default function Hero({ slides = [] }) {
     setIsAutoPlaying(false);
     setCurrentIndex(index);
     setTimeout(() => setIsAutoPlaying(true), 10000);
+  };
+
+  const handlePlayNow = () => {
+    if (currentSlide?._id) {
+      router.push(`/watch/${currentSlide._id}`);
+    }
+  };
+
+  const handleMoreInfo = () => {
+    // Navigate to media details page or show modal
+    // For now, navigate to player page
+    if (currentSlide?._id) {
+      router.push(`/watch/${currentSlide._id}`);
+    }
   };
 
   if (slides.length === 0) {
@@ -182,6 +198,7 @@ export default function Hero({ slides = [] }) {
               size="small"
               startIcon={<PlayArrow />}
               borderRadius="6px"
+              onClick={handlePlayNow}
             >
               PLAY NOW
             </Button>
@@ -192,6 +209,7 @@ export default function Hero({ slides = [] }) {
               size="small"
               startIcon={<Info />}
               borderRadius="6px"
+              onClick={handleMoreInfo}
             >
               MORE INFO
             </Button>

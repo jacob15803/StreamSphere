@@ -28,6 +28,7 @@ require("./models/OTP");
 require("./routes/authRoutes")(app);
 require("./routes/mediaRoutes")(app);
 require("./routes/watchlistRoutes")(app);
+require("./routes/videoRoutes")(app);
 
 // // Health check route
 // app.get("/", (req, res) => {

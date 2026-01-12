@@ -1,169 +1,174 @@
-import React from 'react';
-import { Button as MuiButton } from '@mui/material';
+import React from "react";
+import { Button as MuiButton } from "@mui/material";
 
-const Button = ({ 
-  variant = 'primary', 
-  children, 
+const Button = ({
+  variant = "primary",
+  children,
   fullWidth = false,
-  size = 'medium',
+  size = "medium",
   disabled = false,
   onClick,
   startIcon,
   endIcon,
-  borderRadius = '4px',
+  borderRadius = "4px",
   textSize,
-  ...props 
+  ...props
 }) => {
-  
   const variantStyles = {
     primary: {
-      backgroundColor: '#fff',
-      color: '#000',
-      textTransform: 'none',
-      fontSize: '14px',
+      backgroundColor: "#fff",
+      color: "#000",
+      textTransform: "none",
+      fontSize: "14px",
       fontWeight: 500,
       px: 3,
       py: 1.5,
-      borderRadius: '4px',
-      '&:hover': {
-        backgroundColor: '#ffd700',
+      borderRadius: "4px",
+      "&:hover": {
+        backgroundColor: "#ffd700",
       },
-      '&:disabled': {
-        backgroundColor: '#e0e0e0',
-        color: '#9e9e9e',
-      }
+      "&:disabled": {
+        backgroundColor: "#e0e0e0",
+        color: "#9e9e9e",
+      },
     },
     secondary: {
-      backgroundColor: '#1976d2',
-      color: '#fff',
-      textTransform: 'none',
-      fontSize: '14px',
+      backgroundColor: "#1976d2",
+      color: "#fff",
+      textTransform: "none",
+      fontSize: "14px",
       fontWeight: 500,
       px: 3,
       py: 1.5,
-      borderRadius: '4px',
-      '&:hover': {
-        backgroundColor: '#1565c0',
+      borderRadius: "4px",
+      "&:hover": {
+        backgroundColor: "#1565c0",
       },
-      '&:disabled': {
-        backgroundColor: '#e0e0e0',
-        color: '#9e9e9e',
-      }
+      "&:disabled": {
+        backgroundColor: "#e0e0e0",
+        color: "#9e9e9e",
+      },
     },
     outlined: {
-      backgroundColor: 'transparent',
-      color: '#fff',
-      border: '2px solid #fff',
-      textTransform: 'none',
-      fontSize: '14px',
+      backgroundColor: "transparent",
+      color: "#fff",
+      border: "2px solid #fff",
+      textTransform: "none",
+      fontSize: "14px",
       fontWeight: 500,
       px: 3,
       py: 1.5,
-      borderRadius: '4px',
-      '&:hover': {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        borderColor: '#ffd700',
-        color: '#ffd700',
+      borderRadius: "4px",
+      "&:hover": {
+        backgroundColor: "rgba(255, 255, 255, 0.1)",
+        borderColor: "#ffd700",
+        color: "#ffd700",
       },
-      '&:disabled': {
-        borderColor: '#9e9e9e',
-        color: '#9e9e9e',
-      }
+      "&:disabled": {
+        borderColor: "#9e9e9e",
+        color: "#9e9e9e",
+      },
     },
     text: {
-      backgroundColor: 'transparent',
-      color: '#fff',
-      textTransform: 'none',
-      fontSize: '14px',
+      backgroundColor: "transparent",
+      color: "#fff",
+      textTransform: "none",
+      fontSize: "14px",
       fontWeight: 500,
       px: 2,
       py: 1,
-      borderRadius: '4px',
-      '&:hover': {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        color: '#ffd700',
+      borderRadius: "4px",
+      "&:hover": {
+        backgroundColor: "rgba(255, 255, 255, 0.1)",
+        color: "#ffd700",
       },
-      '&:disabled': {
-        color: '#9e9e9e',
-      }
+      "&:disabled": {
+        color: "#9e9e9e",
+      },
     },
     dark: {
-      backgroundColor: '#000',
-      color: '#fff',
-      textTransform: 'none',
-      fontSize: '14px',
+      backgroundColor: "#000",
+      color: "#fff",
+      textTransform: "none",
+      fontSize: "14px",
       fontWeight: 500,
       px: 3,
       py: 1.5,
-      borderRadius: '4px',
-      '&:hover': {
-        backgroundColor: '#333',
+      borderRadius: "4px",
+      "&:hover": {
+        backgroundColor: "#333",
       },
-      '&:disabled': {
-        backgroundColor: '#e0e0e0',
-        color: '#9e9e9e',
-      }
+      "&:disabled": {
+        backgroundColor: "#e0e0e0",
+        color: "#9e9e9e",
+      },
     },
     success: {
-      backgroundColor: '#4caf50',
-      color: '#fff',
-      textTransform: 'none',
-      fontSize: '14px',
+      backgroundColor: "#4caf50",
+      color: "#fff",
+      textTransform: "none",
+      fontSize: "14px",
       fontWeight: 500,
       px: 3,
       py: 1.5,
-      borderRadius: '4px',
-      '&:hover': {
-        backgroundColor: '#45a049',
+      borderRadius: "4px",
+      "&:hover": {
+        backgroundColor: "#45a049",
       },
-      '&:disabled': {
-        backgroundColor: '#e0e0e0',
-        color: '#9e9e9e',
-      }
+      "&:disabled": {
+        backgroundColor: "#e0e0e0",
+        color: "#9e9e9e",
+      },
     },
     danger: {
-      backgroundColor: '#f44336',
-      color: '#fff',
-      textTransform: 'none',
-      fontSize: '14px',
+      backgroundColor: "#f44336",
+      color: "#fff",
+      textTransform: "none",
+      fontSize: "14px",
       fontWeight: 500,
       px: 3,
       py: 1.5,
-      borderRadius: '4px',
-      '&:hover': {
-        backgroundColor: '#d32f2f',
+      borderRadius: "4px",
+      "&:hover": {
+        backgroundColor: "#d32f2f",
       },
-      '&:disabled': {
-        backgroundColor: '#e0e0e0',
-        color: '#9e9e9e',
-      }
-    }
+      "&:disabled": {
+        backgroundColor: "#e0e0e0",
+        color: "#9e9e9e",
+      },
+    },
   };
 
   const sizeStyles = {
     small: {
-      fontSize: '12px',
+      fontSize: "12px",
       px: 2,
       py: 0.75,
-      borderRadius: '4px',
+      borderRadius: "4px",
     },
     medium: {
-      fontSize: '14px',
+      fontSize: "14px",
       px: 3,
       py: 1.5,
-      borderRadius: '4px',
+      borderRadius: "4px",
     },
     large: {
-      fontSize: '16px',
+      fontSize: "16px",
       px: 4,
       py: 2,
-      borderRadius: '4px',
-    }
+      borderRadius: "4px",
+    },
+  };
+
+  const getMuiVariant = () => {
+    if (variant === "text") return "text";
+    if (variant === "outlined") return "outlined";
+    return "contained";
   };
 
   return (
     <MuiButton
-      variant="contained"
+      variant={getMuiVariant()}
       fullWidth={fullWidth}
       disabled={disabled}
       onClick={onClick}

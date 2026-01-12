@@ -27,12 +27,14 @@ export const sendOTP = (email) => async (dispatch) => {
 
     return { success: true, data };
   } catch (error) {
-    dispatch(setAuthError(error.message));
-    return { success: false, error: error.message };
+    const errorMessage =
+      error.message || "Failed to send OTP. Please try again.";
+    dispatch(setAuthError(errorMessage));
+    return { success: false, error: errorMessage };
   }
 };
 
-// Verify OTP
+// Verify OTP - FIXED VERSION
 export const verifyOTP = (email, otp) => async (dispatch) => {
   try {
     dispatch(setAuthLoading(true));
@@ -49,8 +51,15 @@ export const verifyOTP = (email, otp) => async (dispatch) => {
 
     return { success: true, data };
   } catch (error) {
-    dispatch(setAuthError(error.message));
-    return { success: false, error: error.message };
+    // Extract the error message from the error object
+    const errorMessage =
+      error.message || "Failed to verify OTP. Please try again.";
+
+    // Dispatch the error to Redux state (this will show in the UI)
+    dispatch(setAuthError(errorMessage));
+
+    // Return the error without logging to prevent Next.js runtime error
+    return { success: false, error: errorMessage };
   }
 };
 
@@ -69,8 +78,10 @@ export const register = (userData) => async (dispatch) => {
 
     return { success: true, data };
   } catch (error) {
-    dispatch(setAuthError(error.message));
-    return { success: false, error: error.message };
+    const errorMessage =
+      error.message || "Registration failed. Please try again.";
+    dispatch(setAuthError(errorMessage));
+    return { success: false, error: errorMessage };
   }
 };
 
@@ -88,8 +99,9 @@ export const getCurrentUser = () => async (dispatch) => {
 
     return { success: true, data };
   } catch (error) {
-    dispatch(setAuthError(error.message));
-    return { success: false, error: error.message };
+    const errorMessage = error.message || "Failed to fetch user data.";
+    dispatch(setAuthError(errorMessage));
+    return { success: false, error: errorMessage };
   }
 };
 
@@ -107,8 +119,9 @@ export const updateProfile = (userData) => async (dispatch) => {
 
     return { success: true, data };
   } catch (error) {
-    dispatch(setAuthError(error.message));
-    return { success: false, error: error.message };
+    const errorMessage = error.message || "Failed to update profile.";
+    dispatch(setAuthError(errorMessage));
+    return { success: false, error: errorMessage };
   }
 };
 

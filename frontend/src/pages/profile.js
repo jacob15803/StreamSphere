@@ -44,11 +44,46 @@ const languages = [
   "Portuguese",
 ];
 
+// Common TextField styles
+const textFieldStyles = {
+  "& .MuiOutlinedInput-root": {
+    color: "#fff",
+    "& fieldset": {
+      borderColor: "rgba(255, 255, 255, 0.3)",
+    },
+    "&:hover fieldset": {
+      borderColor: "#ffd700",
+    },
+    "&.Mui-focused fieldset": {
+      borderColor: "#ffd700",
+    },
+    "&.Mui-disabled": {
+      "& fieldset": {
+        borderColor: "rgba(255, 255, 255, 0.2)",
+      },
+    },
+  },
+  "& .MuiInputLabel-root": {
+    color: "rgba(255, 255, 255, 0.7)",
+    "&.Mui-focused": {
+      color: "#ffd700",
+    },
+    "&.Mui-disabled": {
+      color: "rgba(255, 255, 255, 0.5)",
+    },
+  },
+  "& .MuiInputBase-input": {
+    color: "#fff",
+    "&.Mui-disabled": {
+      WebkitTextFillColor: "rgba(255, 255, 255, 0.6)",
+    },
+  },
+};
+
 export default function ProfilePage() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { user, isAuthenticated, loading } = useSelector((state) => state.auth);
-  const { watchlistCount } = useSelector((state) => state.watchlist);
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -286,23 +321,7 @@ export default function ProfilePage() {
                 value={formData.name}
                 onChange={handleChange}
                 disabled={!isEditing}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    color: "#fff",
-                    "& fieldset": {
-                      borderColor: "rgba(255, 255, 255, 0.3)",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: "#ffd700",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#ffd700",
-                    },
-                  },
-                  "& .MuiInputLabel-root": {
-                    color: "rgba(255, 255, 255, 0.7)",
-                  },
-                }}
+                sx={textFieldStyles}
               />
             </Grid>
 
@@ -314,23 +333,7 @@ export default function ProfilePage() {
                 value={formData.phone}
                 onChange={handleChange}
                 disabled={!isEditing}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    color: "#fff",
-                    "& fieldset": {
-                      borderColor: "rgba(255, 255, 255, 0.3)",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: "#ffd700",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#ffd700",
-                    },
-                  },
-                  "& .MuiInputLabel-root": {
-                    color: "rgba(255, 255, 255, 0.7)",
-                  },
-                }}
+                sx={textFieldStyles}
               />
             </Grid>
 
@@ -346,23 +349,7 @@ export default function ProfilePage() {
                 InputLabelProps={{
                   shrink: true,
                 }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    color: "#fff",
-                    "& fieldset": {
-                      borderColor: "rgba(255, 255, 255, 0.3)",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: "#ffd700",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#ffd700",
-                    },
-                  },
-                  "& .MuiInputLabel-root": {
-                    color: "rgba(255, 255, 255, 0.7)",
-                  },
-                }}
+                sx={textFieldStyles}
               />
             </Grid>
 
@@ -372,17 +359,7 @@ export default function ProfilePage() {
                 label="Email"
                 value={user.email}
                 disabled
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    color: "#fff",
-                    "& fieldset": {
-                      borderColor: "rgba(255, 255, 255, 0.3)",
-                    },
-                  },
-                  "& .MuiInputLabel-root": {
-                    color: "rgba(255, 255, 255, 0.7)",
-                  },
-                }}
+                sx={textFieldStyles}
               />
             </Grid>
 

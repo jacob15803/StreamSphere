@@ -57,6 +57,10 @@ const mediaSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    videoUrl: {
+      type: String,
+      default: "",
+    },
     trailerUrl: {
       type: String,
       default: "",

@@ -1,12 +1,27 @@
 {
+  "name": "media-streaming-server",
+  "version": "1.0.0",
+  "description": "Media streaming platform backend server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
   "dependencies": {
-    "bcryptjs": "^3.0.3",
+    "@aws-sdk/client-s3": "^3.662.0",
+    "@aws-sdk/s3-request-presigner": "^3.662.0",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
-    "express": "^5.2.1",
-    "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.1.1",
-    "nodemailer": "^7.0.12",
-    "nodemon": "^3.1.11"
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.7.2",
+    "nodemailer": "^6.9.15"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

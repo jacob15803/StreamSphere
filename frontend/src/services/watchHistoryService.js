@@ -1,5 +1,7 @@
 // src/services/watchHistoryService.js
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+
 // Get token from localStorage
 const getToken = () => {
   if (typeof window !== "undefined") {
@@ -22,7 +24,7 @@ const apiRequest = async (endpoint, options = {}) => {
   };
 
   try {
-    const response = await fetch(endpoint, config);
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     const data = await response.json();
 
     if (!response.ok) {

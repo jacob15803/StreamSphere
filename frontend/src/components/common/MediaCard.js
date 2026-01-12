@@ -1,6 +1,7 @@
 // src/components/common/MediaCard.js
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useRouter } from "next/router";
 import {
   Card,
   CardMedia,
@@ -18,6 +19,7 @@ import {
 } from "@/redux/actions/watchlistActions";
 
 export default function MediaCard({ media, showWatchlistButton = true }) {
+  const router = useRouter();
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((state) => state.auth);
   const [inWatchlist, setInWatchlist] = useState(false);
@@ -62,8 +64,14 @@ export default function MediaCard({ media, showWatchlistButton = true }) {
     setLoading(false);
   };
 
+  const handleCardClick = () => {
+    // Navigate to player page
+    router.push(`/watch/${media._id}`);
+  };
+
   return (
     <Card
+      onClick={handleCardClick}
       sx={{
         minWidth: 200,
         maxWidth: 200,
