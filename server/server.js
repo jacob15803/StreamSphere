@@ -44,6 +44,7 @@ require("./routes/watchlistRoutes")(app);
 require("./routes/mediaRoutes")(app);
 require("./routes/paymentRoutes")(app);
 require("./routes/videoRoutes")(app); // NEW: Video streaming routes
+require("./routes/searchRoutes")(app);
 
 // Health check endpoint
 app.get("/", (req, res) => {

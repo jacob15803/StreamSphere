@@ -59,14 +59,9 @@ export default function Hero({ slides = [] }) {
   };
 
   const handleMoreInfo = () => {
-    if (!isAuthenticated) {
-      setLoginModalOpen(true);
-      return;
-    }
-    // Navigate to media details page or show modal
-    // For now, navigate to player page
-    if (currentSlide?._id) {
-      router.push(`/watch/${currentSlide._id}`);
+    if (currentSlide?.name) {
+      const searchQuery = encodeURIComponent(currentSlide.name);
+      window.open(`https://www.imdb.com/find?q=${searchQuery}`, "_blank");
     }
   };
 
@@ -81,7 +76,7 @@ export default function Hero({ slides = [] }) {
           justifyContent: "flex-start",
           px: { xs: 3, md: 4, lg: 3 },
           position: "relative",
-          backgroundImage: 'url("/hero_bg.jpg")',
+          backgroundImage: 'url("/Hero_bg.jpg")',
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
@@ -157,7 +152,7 @@ export default function Hero({ slides = [] }) {
           justifyContent: "flex-start",
           px: { xs: 3, md: 4, lg: 3 },
           position: "relative",
-          backgroundImage: 'url("/hero_bg.jpg")',
+          backgroundImage: 'url("/Hero_bg.jpg")',
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
