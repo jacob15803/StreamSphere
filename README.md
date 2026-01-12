@@ -1,3 +1,5 @@
+# StreamSphere
+
 ## Design
 
 The design for this project was created in Figma.
