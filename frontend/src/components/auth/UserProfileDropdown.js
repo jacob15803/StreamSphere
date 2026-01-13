@@ -10,14 +10,16 @@ import {
   ListItemText,
   Divider,
   Typography,
+  Chip,
 } from "@mui/material";
 import {
   Person,
   Bookmark,
   History,
-  Settings,
   Logout,
   KeyboardArrowDown,
+  Stars,
+  CreditCard,
 } from "@mui/icons-material";
 import { useRouter } from "next/router";
 import { logout } from "@/redux/actions/authActions";
@@ -26,6 +28,7 @@ export default function UserProfileDropdown() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const { currentSubscription } = useSelector((state) => state.subscription);
 
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
@@ -53,12 +56,19 @@ export default function UserProfileDropdown() {
     router.push("/history");
   };
 
+  const handleSubscription = () => {
+    handleClose();
+    router.push("/subscription");
+  };
+
   const handleLogout = () => {
     handleClose();
     dispatch(logout());
   };
 
   if (!user) return null;
+
+  const isPremium = currentSubscription?.isPremium;
 
   return (
     <>
@@ -83,8 +93,9 @@ export default function UserProfileDropdown() {
           sx={{
             width: 32,
             height: 32,
-            bgcolor: "#e74c3c",
+            bgcolor: isPremium ? "#ffd700" : "#e74c3c",
             fontSize: "14px",
+            border: isPremium ? "2px solid #ffd700" : "none",
           }}
         >
           {user.name?.charAt(0).toUpperCase()}
@@ -117,7 +128,7 @@ export default function UserProfileDropdown() {
         PaperProps={{
           sx: {
             mt: 1.5,
-            minWidth: 220,
+            minWidth: 240,
             borderRadius: 2,
             boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
           },
@@ -125,9 +136,32 @@ export default function UserProfileDropdown() {
       >
         {/* User Info */}
         <Box sx={{ px: 2, py: 1.5 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-            {user.name}
-          </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 0.5,
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              {user.name}
+            </Typography>
+            {isPremium && (
+              <Chip
+                icon={<Stars sx={{ fontSize: 14 }} />}
+                label="Premium"
+                size="small"
+                sx={{
+                  height: 20,
+                  fontSize: "0.7rem",
+                  backgroundColor: "#ffd700",
+                  color: "#000",
+                  fontWeight: 600,
+                }}
+              />
+            )}
+          </Box>
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
             {user.email}
           </Typography>
@@ -140,6 +174,26 @@ export default function UserProfileDropdown() {
             <Person fontSize="small" />
           </ListItemIcon>
           <ListItemText>Profile</ListItemText>
+        </MenuItem>
+
+        <MenuItem onClick={handleSubscription}>
+          <ListItemIcon>
+            {isPremium ? (
+              <Stars fontSize="small" sx={{ color: "#ffd700" }} />
+            ) : (
+              <CreditCard fontSize="small" />
+            )}
+          </ListItemIcon>
+          <ListItemText>
+            <Typography
+              sx={{
+                color: isPremium ? "#ffd700" : "inherit",
+                fontWeight: isPremium ? 600 : 400,
+              }}
+            >
+              {isPremium ? "Premium Plan" : "Go Premium"}
+            </Typography>
+          </ListItemText>
         </MenuItem>
 
         <MenuItem onClick={handleWatchlist}>

@@ -33,6 +33,31 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    // Subscription fields
+    subscription: {
+      plan: {
+        type: String,
+        enum: ["free", "premium"],
+        default: "free",
+      },
+      status: {
+        type: String,
+        enum: ["active", "expired", "cancelled"],
+        default: "active",
+      },
+      startDate: {
+        type: Date,
+        default: null,
+      },
+      endDate: {
+        type: Date,
+        default: null,
+      },
+      autoRenew: {
+        type: Boolean,
+        default: false,
+      },
+    },
     preferences: {
       favoriteGenres: [
         {
@@ -67,7 +92,6 @@ const userSchema = new mongoose.Schema(
           ref: "Media",
           required: true,
         },
-        // For series - track which episode was watched
         seasonNumber: {
           type: Number,
           default: null,
@@ -76,9 +100,8 @@ const userSchema = new mongoose.Schema(
           type: Number,
           default: null,
         },
-        // Progress tracking
         progress: {
-          type: Number, // percentage watched (0-100)
+          type: Number,
           default: 0,
           min: 0,
           max: 100,
@@ -121,15 +144,58 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for efficient querying
-// userSchema.index({ email: 1 });
+// Indexes
 userSchema.index({ "watchlist.mediaId": 1 });
 userSchema.index({ "watchHistory.mediaId": 1 });
+userSchema.index({ "subscription.plan": 1, "subscription.status": 1 });
 
 // Virtual for watchlist count
 userSchema.virtual("watchlistCount").get(function () {
   return this.watchlist.length;
 });
+
+// Virtual to check if user has active premium subscription
+userSchema.virtual("isPremium").get(function () {
+  return (
+    this.subscription.plan === "premium" &&
+    this.subscription.status === "active" &&
+    (!this.subscription.endDate || this.subscription.endDate > new Date())
+  );
+});
+
+// Method to check subscription validity
+userSchema.methods.hasValidSubscription = function () {
+  if (this.subscription.plan === "free") return false;
+
+  if (this.subscription.status !== "active") return false;
+
+  if (this.subscription.endDate && this.subscription.endDate < new Date()) {
+    return false;
+  }
+
+  return true;
+};
+
+// Method to activate premium subscription
+userSchema.methods.activatePremium = function (durationInDays = 30) {
+  const now = new Date();
+  const endDate = new Date(now);
+  endDate.setDate(endDate.getDate() + durationInDays);
+
+  this.subscription.plan = "premium";
+  this.subscription.status = "active";
+  this.subscription.startDate = now;
+  this.subscription.endDate = endDate;
+
+  return this.save();
+};
+
+// Method to cancel subscription
+userSchema.methods.cancelSubscription = function () {
+  this.subscription.status = "cancelled";
+  this.subscription.autoRenew = false;
+  return this.save();
+};
 
 // Method to add to watchlist
 userSchema.methods.addToWatchlist = function (mediaId) {
@@ -160,16 +226,13 @@ userSchema.methods.addToWatchHistory = function (
   progress = 0,
   completed = false
 ) {
-  // Find existing entry for this media and episode combination
   const existingIndex = this.watchHistory.findIndex((item) => {
     const sameMedia = item.mediaId.toString() === mediaId.toString();
 
-    // For movies (no season/episode)
     if (!seasonNumber && !episodeNumber) {
       return sameMedia && !item.seasonNumber && !item.episodeNumber;
     }
 
-    // For series episodes
     return (
       sameMedia &&
       item.seasonNumber === seasonNumber &&
@@ -178,12 +241,10 @@ userSchema.methods.addToWatchHistory = function (
   });
 
   if (existingIndex !== -1) {
-    // Update existing entry
     this.watchHistory[existingIndex].progress = progress;
     this.watchHistory[existingIndex].completed = completed;
     this.watchHistory[existingIndex].lastWatchedAt = Date.now();
   } else {
-    // Add new entry
     this.watchHistory.push({
       mediaId,
       seasonNumber,
@@ -198,12 +259,12 @@ userSchema.methods.addToWatchHistory = function (
   return this.save();
 };
 
-// Method to get continue watching (incomplete items)
+// Method to get continue watching
 userSchema.methods.getContinueWatching = function () {
   return this.watchHistory
     .filter((item) => !item.completed && item.progress > 0)
     .sort((a, b) => b.lastWatchedAt - a.lastWatchedAt)
-    .slice(0, 10); // Return top 10 recent
+    .slice(0, 10);
 };
 
 const User = mongoose.model("User", userSchema);

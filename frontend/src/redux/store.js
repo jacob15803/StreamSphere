@@ -1,3 +1,4 @@
+// src/redux/store.js
 // Step 0: Install Redux Toolkit and React-Redux ($ npm install @reduxjs/toolkit react-redux)
 // Step 1: Create Slice & Name it
 // Step 2: Set Initial State
@@ -8,21 +9,21 @@
 // Step 7: Call State using useDispatch
 // Step 8: Select Reducer Slice using useSelector
 
-// const { configureStore } = require("@reduxjs/toolkit");
+import { configureStore } from "@reduxjs/toolkit";
 import { themeReducer } from "./reducer/themeReducer";
 import { mediaReducer } from "./reducer/mediaReducer";
-import { configureStore } from "@reduxjs/toolkit";
 import { authReducer } from "./reducer/authReducer";
 import { watchlistReducer } from "./reducer/watchlistReducer";
 import { watchHistoryReducer } from "./reducer/watchHistoryReducer";
+import { subscriptionReducer } from "./reducer/subscriptionReducer";
 
 export const store = configureStore({
   reducer: {
     activeTheme: themeReducer,
     media: mediaReducer,
-    // moviesData: movieReducer
     auth: authReducer,
     watchlist: watchlistReducer,
     watchHistory: watchHistoryReducer,
+    subscription: subscriptionReducer, // ← NEW: Added subscription reducer
   },
 });

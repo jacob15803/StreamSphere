@@ -1,5 +1,3 @@
-// server/routes/videoRoutes.js
-const mongoose = require("mongoose");
 const { Media } = require("../models/Media");
 const s3Service = require("../utils/s3Service");
 const { protect } = require("../middleware/authMiddleware");
@@ -7,7 +5,7 @@ const { protect } = require("../middleware/authMiddleware");
 module.exports = (app) => {
   /**
    * GET /api/v1/video/signed-url/:mediaId
-   * Get signed URL for a movie or series trailer/video
+   * Get signed URL for movie/series - PREMIUM ONLY for full content
    */
   app.get("/api/v1/video/signed-url/:mediaId", protect, async (req, res) => {
     try {
@@ -23,10 +21,33 @@ module.exports = (app) => {
         });
       }
 
+      // Check if user has premium subscription
+      const isPremium = req.user.hasValidSubscription();
+
       let videoUrl = null;
       let trailerUrl = null;
 
-      // If it's a series and episodeId is provided, get episode video
+      // Non-premium users can only access trailers
+      if (!isPremium) {
+        trailerUrl = media.trailerUrl;
+
+        if (trailerUrl && s3Service.isS3Url(trailerUrl)) {
+          const trailerKey = s3Service.extractS3Key(trailerUrl);
+          trailerUrl = await s3Service.getSignedVideoUrl(trailerKey);
+        }
+
+        return res.json({
+          success: true,
+          mediaId: media._id,
+          type: media.type,
+          name: media.name,
+          isPremium: false,
+          trailerUrl,
+          message: "Upgrade to premium to watch full content",
+        });
+      }
+
+      // Premium users get full access
       if (media.type === "series" && episodeId) {
         const episode = media.episodes.id(episodeId);
         if (!episode) {
@@ -37,18 +58,18 @@ module.exports = (app) => {
         }
         videoUrl = episode.videoUrl;
       } else {
-        // For movies or series without episode specified
         videoUrl = media.videoUrl;
       }
 
       trailerUrl = media.trailerUrl;
 
-      // Generate signed URLs if they are S3 URLs
+      // Generate signed URLs
       const response = {
         success: true,
         mediaId: media._id,
         type: media.type,
         name: media.name,
+        isPremium: true,
       };
 
       if (videoUrl && s3Service.isS3Url(videoUrl)) {
@@ -77,7 +98,7 @@ module.exports = (app) => {
 
   /**
    * GET /api/v1/video/episode-signed-url/:mediaId/:episodeId
-   * Get signed URL for a specific episode
+   * Get signed URL for specific episode - PREMIUM ONLY
    */
   app.get(
     "/api/v1/video/episode-signed-url/:mediaId/:episodeId",
@@ -85,6 +106,17 @@ module.exports = (app) => {
     async (req, res) => {
       try {
         const { mediaId, episodeId } = req.params;
+
+        // Check premium status
+        const isPremium = req.user.hasValidSubscription();
+
+        if (!isPremium) {
+          return res.status(403).json({
+            success: false,
+            message: "Premium subscription required to watch episodes",
+            isPremium: false,
+          });
+        }
 
         // Find media
         const media = await Media.findById(mediaId);
@@ -111,7 +143,7 @@ module.exports = (app) => {
           });
         }
 
-        // Generate signed URL
+        // Generate signed URLs
         let videoUrl = episode.videoUrl;
         let thumbnailUrl = episode.thumbnailUrl;
 
@@ -127,6 +159,7 @@ module.exports = (app) => {
 
         res.json({
           success: true,
+          isPremium: true,
           episode: {
             _id: episode._id,
             episodeNumber: episode.episodeNumber,
@@ -151,7 +184,7 @@ module.exports = (app) => {
 
   /**
    * GET /api/v1/video/public-trailer/:mediaId
-   * Get signed URL for trailer WITHOUT authentication
+   * Get signed URL for trailer - PUBLIC ACCESS (no auth required)
    */
   app.get("/api/v1/video/public-trailer/:mediaId", async (req, res) => {
     try {
@@ -179,7 +212,7 @@ module.exports = (app) => {
         mediaId: media._id,
         type: media.type,
         name: media.name,
-        trailerUrl: trailerUrl,
+        trailerUrl,
         posterUrl: media.posterUrl,
       });
     } catch (error) {
@@ -193,7 +226,7 @@ module.exports = (app) => {
 
   /**
    * GET /api/v1/video/season-urls/:mediaId/:seasonNumber
-   * Get signed URLs for all episodes in a season
+   * Get signed URLs for all episodes in a season - PREMIUM ONLY
    */
   app.get(
     "/api/v1/video/season-urls/:mediaId/:seasonNumber",
@@ -201,6 +234,17 @@ module.exports = (app) => {
     async (req, res) => {
       try {
         const { mediaId, seasonNumber } = req.params;
+
+        // Check premium status
+        const isPremium = req.user.hasValidSubscription();
+
+        if (!isPremium) {
+          return res.status(403).json({
+            success: false,
+            message: "Premium subscription required to watch episodes",
+            isPremium: false,
+          });
+        }
 
         // Find media
         const media = await Media.findById(mediaId);
@@ -262,6 +306,7 @@ module.exports = (app) => {
 
         res.json({
           success: true,
+          isPremium: true,
           seasonNumber: parseInt(seasonNumber),
           episodes: episodesWithUrls,
         });

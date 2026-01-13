@@ -23,12 +23,14 @@ mongoose
 require("./models/Media");
 require("./models/User");
 require("./models/OTP");
+require("./models/Subscription");
 
 // Routes
 require("./routes/authRoutes")(app);
 require("./routes/mediaRoutes")(app);
 require("./routes/watchlistRoutes")(app);
 require("./routes/videoRoutes")(app);
+require("./routes/subscriptionRoutes")(app);
 
 // // Health check route
 // app.get("/", (req, res) => {

@@ -1,4 +1,4 @@
-// src/pages/watch/[id].js - UPDATED VERSION
+// src/pages/watch/[id].js - FIXED VERSION WITH PREMIUM CHECK
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useDispatch, useSelector } from "react-redux";
@@ -17,7 +17,7 @@ import {
   Button,
   IconButton,
 } from "@mui/material";
-import { PlayArrow, Login, Close } from "@mui/icons-material";
+import { PlayArrow, Login, Close, Stars } from "@mui/icons-material";
 import VideoPlayer from "@/components/player/VideoPlayer";
 import { mediaService } from "@/services/mediaService";
 import { updateWatchHistory } from "@/redux/actions/watchHistoryActions";
@@ -30,8 +30,9 @@ function WatchPage() {
   const dispatch = useDispatch();
   const { id } = router.query;
 
-  // ✅ Get auth state to check if user is logged in
+  // ✅ Get auth state AND subscription status
   const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const { currentSubscription } = useSelector((state) => state.subscription);
 
   // Media state
   const [media, setMedia] = useState(null);
@@ -48,9 +49,12 @@ function WatchPage() {
   // Continue watching state
   const [initialTime, setInitialTime] = useState(0);
 
-  // ✅ Track if we're showing trailer only (for non-logged-in users)
+  // ✅ Check if user has premium access
+  const isPremium = currentSubscription?.isPremium || false;
+
+  // ✅ Track if we're showing trailer only
   const [isTrailerOnly, setIsTrailerOnly] = useState(false);
-  const [showLoginOverlay, setShowLoginOverlay] = useState(true); // Add state to control overlay visibility
+  const [showOverlay, setShowOverlay] = useState(true);
 
   // Fetch media details
   useEffect(() => {
@@ -69,7 +73,7 @@ function WatchPage() {
 
         setMedia(mediaData.data);
 
-        // ✅ IF USER IS NOT LOGGED IN - SHOW TRAILER ONLY
+        // ✅ CHECK 1: If user is NOT logged in - SHOW TRAILER
         if (!isAuthenticated) {
           setIsTrailerOnly(true);
           await loadTrailer(id);
@@ -77,35 +81,45 @@ function WatchPage() {
           return;
         }
 
-        // ✅ IF USER IS LOGGED IN - LOAD FULL CONTENT
-        if (mediaData.data.type === "series") {
-          const episodesData = await mediaService.getEpisodes(id);
-          if (episodesData.success) {
-            // Get unique seasons
-            const uniqueSeasons = [
-              ...new Set(episodesData.data.map((ep) => ep.seasonNumber)),
-            ].sort((a, b) => a - b);
-            setSeasons(uniqueSeasons);
-
-            // Set episodes for first season
-            const season1Episodes = episodesData.data.filter(
-              (ep) => ep.seasonNumber === 1
-            );
-            setEpisodes(season1Episodes);
-
-            // Auto-select first episode
-            if (season1Episodes.length > 0) {
-              setSelectedEpisode(season1Episodes[0]);
-              await loadEpisodeVideo(id, season1Episodes[0]._id);
-            }
-          }
-        } else {
-          // For movies, load video directly
-          await loadMovieVideo(id);
+        // ✅ CHECK 2: If user is logged in but NOT premium - SHOW TRAILER
+        if (isAuthenticated && !isPremium) {
+          setIsTrailerOnly(true);
+          await loadTrailer(id);
+          setLoading(false);
+          return;
         }
 
-        // Check for continue watching progress
-        await checkContinueWatching(id);
+        // ✅ CHECK 3: User is logged in AND has premium - LOAD FULL CONTENT
+        if (isAuthenticated && isPremium) {
+          if (mediaData.data.type === "series") {
+            const episodesData = await mediaService.getEpisodes(id);
+            if (episodesData.success) {
+              // Get unique seasons
+              const uniqueSeasons = [
+                ...new Set(episodesData.data.map((ep) => ep.seasonNumber)),
+              ].sort((a, b) => a - b);
+              setSeasons(uniqueSeasons);
+
+              // Set episodes for first season
+              const season1Episodes = episodesData.data.filter(
+                (ep) => ep.seasonNumber === 1
+              );
+              setEpisodes(season1Episodes);
+
+              // Auto-select first episode
+              if (season1Episodes.length > 0) {
+                setSelectedEpisode(season1Episodes[0]);
+                await loadEpisodeVideo(id, season1Episodes[0]._id);
+              }
+            }
+          } else {
+            // For movies, load video directly
+            await loadMovieVideo(id);
+          }
+
+          // Check for continue watching progress
+          await checkContinueWatching(id);
+        }
       } catch (err) {
         console.error("Error fetching media:", err);
         setError(err.message || "Failed to load media");
@@ -115,12 +129,11 @@ function WatchPage() {
     };
 
     fetchMedia();
-  }, [id, isAuthenticated]);
+  }, [id, isAuthenticated, isPremium]);
 
-  // ✅ NEW FUNCTION: Load trailer (for non-logged-in users)
+  // ✅ Load trailer (for non-premium users)
   const loadTrailer = async (mediaId) => {
     try {
-      // Use public trailer endpoint (no authentication required)
       const response = await fetch(
         `${API_BASE_URL}/api/v1/video/public-trailer/${mediaId}`
       );
@@ -138,7 +151,7 @@ function WatchPage() {
     }
   };
 
-  // Load movie video URL
+  // Load movie video URL (premium only)
   const loadMovieVideo = async (mediaId) => {
     try {
       const token = authUtils.getToken();
@@ -159,11 +172,13 @@ function WatchPage() {
       }
     } catch (err) {
       console.error("Error loading movie video:", err);
-      setError("Failed to load video");
+      // If premium content fails, fallback to trailer
+      await loadTrailer(mediaId);
+      setIsTrailerOnly(true);
     }
   };
 
-  // Load episode video URL
+  // Load episode video URL (premium only)
   const loadEpisodeVideo = async (mediaId, episodeId) => {
     try {
       const token = authUtils.getToken();
@@ -184,13 +199,15 @@ function WatchPage() {
       }
     } catch (err) {
       console.error("Error loading episode video:", err);
-      setError("Failed to load episode video");
+      // If premium content fails, fallback to trailer
+      await loadTrailer(mediaId);
+      setIsTrailerOnly(true);
     }
   };
 
   // Check continue watching progress
   const checkContinueWatching = async (mediaId) => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !isPremium) return;
 
     try {
       const token = authUtils.getToken();
@@ -214,10 +231,10 @@ function WatchPage() {
     }
   };
 
-  // Handle season change
+  // Handle season change (premium only)
   const handleSeasonChange = async (event, newSeason) => {
-    if (!isAuthenticated) {
-      router.push("/login");
+    if (!isPremium) {
+      router.push("/subscription");
       return;
     }
 
@@ -237,10 +254,10 @@ function WatchPage() {
     }
   };
 
-  // Handle episode selection
+  // Handle episode selection (premium only)
   const handleEpisodeSelect = async (episode) => {
-    if (!isAuthenticated) {
-      router.push("/login");
+    if (!isPremium) {
+      router.push("/subscription");
       return;
     }
 
@@ -249,9 +266,9 @@ function WatchPage() {
     setInitialTime(0);
   };
 
-  // Handle progress tracking
+  // Handle progress tracking (premium only)
   const handleProgress = async (currentTime, duration) => {
-    if (!media || !id || !duration || !isAuthenticated) return;
+    if (!media || !id || !duration || !isAuthenticated || !isPremium) return;
 
     try {
       const progressPercent = Math.floor((currentTime / duration) * 100);
@@ -270,9 +287,9 @@ function WatchPage() {
     }
   };
 
-  // Handle video end
+  // Handle video end (premium only)
   const handleVideoEnd = () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !isPremium) return;
 
     // Mark as completed
     if (media && id) {
@@ -298,9 +315,13 @@ function WatchPage() {
     }
   };
 
-  // ✅ Handle login button click
-  const handleLoginClick = () => {
-    router.push("/login");
+  // ✅ Handle action button clicks
+  const handleActionClick = () => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    } else {
+      router.push("/subscription");
+    }
   };
 
   if (loading) {
@@ -361,7 +382,7 @@ function WatchPage() {
             onProgress={handleProgress}
             initialTime={initialTime}
             onEnded={handleVideoEnd}
-            autoPlay={isAuthenticated}
+            autoPlay={isPremium}
           />
         ) : (
           <Box
@@ -377,28 +398,28 @@ function WatchPage() {
           </Box>
         )}
 
-        {/* ✅ LOGIN OVERLAY for non-authenticated users - Only covers center, not controls */}
-        {!isAuthenticated && showLoginOverlay && (
+        {/* ✅ OVERLAY for non-premium users (logged in or not) */}
+        {isTrailerOnly && showOverlay && (
           <Box
             sx={{
               position: "absolute",
               top: 0,
               left: 0,
               right: 0,
-              bottom: 80, // Leave space for video controls
+              bottom: 80,
               background: "rgba(0, 0, 0, 0.5)",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
               gap: 2,
-              zIndex: 5, // Lower z-index so controls are accessible
-              pointerEvents: "none", // Allow clicks to pass through
+              zIndex: 5,
+              pointerEvents: "none",
             }}
           >
             <Box
               sx={{
-                pointerEvents: "auto", // Only the button area should capture clicks
+                pointerEvents: "auto",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
@@ -413,7 +434,7 @@ function WatchPage() {
             >
               {/* Close Button */}
               <IconButton
-                onClick={() => setShowLoginOverlay(false)}
+                onClick={() => setShowOverlay(false)}
                 sx={{
                   position: "absolute",
                   top: 8,
@@ -437,7 +458,7 @@ function WatchPage() {
                   px: 2,
                 }}
               >
-                {isTrailerOnly ? "This is a Trailer" : "Login Required"}
+                {!isAuthenticated ? "This is a Trailer" : "Premium Content"}
               </Typography>
               <Typography
                 variant="h6"
@@ -448,14 +469,19 @@ function WatchPage() {
                   mb: 2,
                 }}
               >
-                Login to watch the full{" "}
-                {media.type === "series" ? "series" : "movie"}
+                {!isAuthenticated
+                  ? `Login to watch the full ${
+                      media.type === "series" ? "series" : "movie"
+                    }`
+                  : `Upgrade to Premium to watch the full ${
+                      media.type === "series" ? "series" : "movie"
+                    }`}
               </Typography>
               <Button
                 variant="contained"
                 size="large"
-                startIcon={<Login />}
-                onClick={handleLoginClick}
+                startIcon={!isAuthenticated ? <Login /> : <Stars />}
+                onClick={handleActionClick}
                 sx={{
                   backgroundColor: "#ffd700",
                   color: "#000",
@@ -470,7 +496,7 @@ function WatchPage() {
                   transition: "all 0.3s ease",
                 }}
               >
-                Login to Watch
+                {!isAuthenticated ? "Login to Watch" : "Upgrade to Premium"}
               </Button>
             </Box>
           </Box>
@@ -490,7 +516,7 @@ function WatchPage() {
             }}
           >
             {media.name}
-            {media.type === "series" && selectedEpisode && isAuthenticated && (
+            {media.type === "series" && selectedEpisode && isPremium && (
               <Typography
                 component="span"
                 sx={{ color: "#ffd700", ml: 2, fontSize: "1.2rem" }}
@@ -548,8 +574,8 @@ function WatchPage() {
             </Box>
           )}
 
-          {/* ✅ Show login prompt if not authenticated */}
-          {!isAuthenticated && (
+          {/* ✅ Show appropriate prompt based on auth/premium status */}
+          {isTrailerOnly && (
             <Box sx={{ mt: 3 }}>
               <Alert
                 severity="info"
@@ -559,14 +585,16 @@ function WatchPage() {
                   border: "1px solid #ffd700",
                 }}
               >
-                Login to access all episodes and track your watch history
+                {!isAuthenticated
+                  ? "Login to access all episodes and track your watch history"
+                  : "Upgrade to Premium to access full episodes and exclusive content"}
               </Alert>
             </Box>
           )}
         </Box>
 
-        {/* Episodes (for series) - Only show if authenticated */}
-        {media.type === "series" && seasons.length > 0 && isAuthenticated && (
+        {/* Episodes (for series) - Only show full episodes if premium */}
+        {media.type === "series" && seasons.length > 0 && isPremium && (
           <Box>
             <Typography
               variant="h5"
@@ -692,8 +720,8 @@ function WatchPage() {
           </Box>
         )}
 
-        {/* ✅ Show blurred episodes section for non-authenticated users */}
-        {media.type === "series" && !isAuthenticated && (
+        {/* ✅ Show blurred episodes section for non-premium users */}
+        {media.type === "series" && !isPremium && (
           <Box
             sx={{
               position: "relative",
@@ -750,8 +778,8 @@ function WatchPage() {
               <Button
                 variant="contained"
                 size="large"
-                startIcon={<Login />}
-                onClick={handleLoginClick}
+                startIcon={!isAuthenticated ? <Login /> : <Stars />}
+                onClick={handleActionClick}
                 sx={{
                   backgroundColor: "#ffd700",
                   color: "#000",
@@ -763,7 +791,9 @@ function WatchPage() {
                   },
                 }}
               >
-                Login to View Episodes
+                {!isAuthenticated
+                  ? "Login to View Episodes"
+                  : "Upgrade to View Episodes"}
               </Button>
             </Box>
           </Box>
@@ -773,5 +803,4 @@ function WatchPage() {
   );
 }
 
-// ✅ REMOVE ProtectedRoute wrapper - we handle auth inside the component
 export default WatchPage;

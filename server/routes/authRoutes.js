@@ -4,14 +4,11 @@ const { sendOTPEmail, sendWelcomeEmail } = require("../utils/emailService");
 const { generateToken, protect } = require("../middleware/authMiddleware");
 
 module.exports = (app) => {
-  // @route   POST /api/auth/send-otp
-  // @desc    Send OTP to email (for both new and existing users)
-  // @access  Public
+  // Send OTP
   app.post("/api/auth/send-otp", async (req, res) => {
     try {
       const { email } = req.body;
 
-      // Validate email
       if (!email) {
         return res.status(400).json({
           success: false,
@@ -27,16 +24,12 @@ module.exports = (app) => {
         });
       }
 
-      // Check if user exists
       const existingUser = await User.findOne({ email: email.toLowerCase() });
 
-      // Clean up old OTPs for this email
       await OTP.cleanupOldOTPs(email.toLowerCase());
 
-      // Generate 6-digit OTP
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-      // Create new OTP record
       const newOTP = new OTP({
         email: email.toLowerCase(),
         otp: otpCode,
@@ -44,7 +37,6 @@ module.exports = (app) => {
 
       await newOTP.save();
 
-      // Send OTP via email
       const emailResult = await sendOTPEmail(email, otpCode, !existingUser);
 
       if (!emailResult.success) {
@@ -69,14 +61,11 @@ module.exports = (app) => {
     }
   });
 
-  // @route   POST /api/auth/verify-otp
-  // @desc    Verify OTP (for login or before registration)
-  // @access  Public
+  // Verify OTP
   app.post("/api/auth/verify-otp", async (req, res) => {
     try {
       const { email, otp } = req.body;
 
-      // Validate input
       if (!email || !otp) {
         return res.status(400).json({
           success: false,
@@ -84,7 +73,6 @@ module.exports = (app) => {
         });
       }
 
-      // Find the latest OTP for this email
       const otpRecord = await OTP.findOne({
         email: email.toLowerCase(),
         verified: false,
@@ -98,7 +86,6 @@ module.exports = (app) => {
         });
       }
 
-      // Check attempts
       if (otpRecord.attempts >= 5) {
         return res.status(400).json({
           success: false,
@@ -106,7 +93,6 @@ module.exports = (app) => {
         });
       }
 
-      // Verify OTP
       const isMatch = await otpRecord.compareOTP(otp);
 
       if (!isMatch) {
@@ -119,19 +105,17 @@ module.exports = (app) => {
         });
       }
 
-      // Mark OTP as verified
       otpRecord.verified = true;
       await otpRecord.save();
 
-      // Check if user exists
       const existingUser = await User.findOne({ email: email.toLowerCase() });
 
       if (existingUser) {
-        // Existing user - LOGIN
         existingUser.lastLogin = Date.now();
         await existingUser.save();
 
         const token = generateToken(existingUser._id);
+        const isPremium = existingUser.hasValidSubscription();
 
         return res.status(200).json({
           success: true,
@@ -145,10 +129,14 @@ module.exports = (app) => {
             phone: existingUser.phone,
             profilePicture: existingUser.profilePicture,
             watchlistCount: existingUser.watchlistCount,
+            subscription: {
+              plan: existingUser.subscription.plan,
+              status: existingUser.subscription.status,
+              isPremium,
+            },
           },
         });
       } else {
-        // New user - needs to complete registration
         return res.status(200).json({
           success: true,
           message: "OTP verified. Please complete your registration.",
@@ -165,9 +153,7 @@ module.exports = (app) => {
     }
   });
 
-  // @route   POST /api/auth/register
-  // @desc    Complete registration for new user (after OTP verification)
-  // @access  Public
+  // Register
   app.post("/api/auth/register", async (req, res) => {
     try {
       const {
@@ -180,7 +166,6 @@ module.exports = (app) => {
         favoriteLanguages,
       } = req.body;
 
-      // Validate required fields
       if (!email || !name) {
         return res.status(400).json({
           success: false,
@@ -188,7 +173,6 @@ module.exports = (app) => {
         });
       }
 
-      // Verify that OTP was verified for this email
       const verifiedOTP = await OTP.findOne({
         email: email.toLowerCase(),
         verified: true,
@@ -202,7 +186,6 @@ module.exports = (app) => {
         });
       }
 
-      // Check if user already exists
       const existingUser = await User.findOne({ email: email.toLowerCase() });
       if (existingUser) {
         return res.status(400).json({
@@ -211,7 +194,6 @@ module.exports = (app) => {
         });
       }
 
-      // Create new user
       const newUser = new User({
         email: email.toLowerCase(),
         name,
@@ -226,15 +208,12 @@ module.exports = (app) => {
 
       await newUser.save();
 
-      // Generate JWT token
       const token = generateToken(newUser._id);
 
-      // Send welcome email (don't wait for it)
       sendWelcomeEmail(newUser.email, newUser.name).catch((err) =>
         console.error("Failed to send welcome email:", err)
       );
 
-      // Clean up verified OTP
       await OTP.deleteOne({ _id: verifiedOTP._id });
 
       res.status(201).json({
@@ -249,6 +228,11 @@ module.exports = (app) => {
           profilePicture: newUser.profilePicture,
           preferences: newUser.preferences,
           watchlistCount: 0,
+          subscription: {
+            plan: newUser.subscription.plan,
+            status: newUser.subscription.status,
+            isPremium: false,
+          },
         },
       });
     } catch (error) {
@@ -260,11 +244,11 @@ module.exports = (app) => {
     }
   });
 
-  // @route   GET /api/auth/me
-  // @desc    Get current user profile
-  // @access  Private
+  // Get current user
   app.get("/api/auth/me", protect, async (req, res) => {
     try {
+      const isPremium = req.user.hasValidSubscription();
+
       res.status(200).json({
         success: true,
         user: {
@@ -278,6 +262,13 @@ module.exports = (app) => {
           watchlistCount: req.user.watchlistCount,
           lastLogin: req.user.lastLogin,
           createdAt: req.user.createdAt,
+          subscription: {
+            plan: req.user.subscription.plan,
+            status: req.user.subscription.status,
+            startDate: req.user.subscription.startDate,
+            endDate: req.user.subscription.endDate,
+            isPremium,
+          },
         },
       });
     } catch (error) {
@@ -289,9 +280,7 @@ module.exports = (app) => {
     }
   });
 
-  // @route   PUT /api/auth/profile
-  // @desc    Update user profile
-  // @access  Private
+  // Update profile
   app.put("/api/auth/profile", protect, async (req, res) => {
     try {
       const {
@@ -324,6 +313,8 @@ module.exports = (app) => {
         { new: true, runValidators: true }
       );
 
+      const isPremium = updatedUser.hasValidSubscription();
+
       res.status(200).json({
         success: true,
         message: "Profile updated successfully",
@@ -336,6 +327,11 @@ module.exports = (app) => {
           profilePicture: updatedUser.profilePicture,
           preferences: updatedUser.preferences,
           watchlistCount: updatedUser.watchlistCount,
+          subscription: {
+            plan: updatedUser.subscription.plan,
+            status: updatedUser.subscription.status,
+            isPremium,
+          },
         },
       });
     } catch (error) {

@@ -1,23 +1,49 @@
 // src/components/common/Navbar.js
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { AppBar, Toolbar, Box } from "@mui/material";
+import { AppBar, Toolbar, Box, Chip } from "@mui/material";
 import MovieIcon from "@mui/icons-material/Movie";
+import { Stars } from "@mui/icons-material";
 import Link from "next/link";
 import Button from "@/components/common/Button";
 import AuthModal from "@/components/auth/AuthModal";
 import UserProfileDropdown from "@/components/auth/UserProfileDropdown";
 import { loadUserFromStorage } from "@/redux/actions/authActions";
+import { getSubscriptionStatus } from "@/redux/actions/subscriptionActions";
 
 export default function Navbar() {
   const dispatch = useDispatch();
   const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const { currentSubscription } = useSelector((state) => state.subscription);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    // Load user from localStorage on component mount
     dispatch(loadUserFromStorage());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(getSubscriptionStatus());
+    }
+  }, [isAuthenticated, dispatch]);
+
+  // Scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      const offset = window.scrollY;
+      if (offset > 50) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   const handleOpenAuthModal = () => {
     setAuthModalOpen(true);
@@ -27,17 +53,20 @@ export default function Navbar() {
     setAuthModalOpen(false);
   };
 
+  const isPremium = currentSubscription?.isPremium;
+
   return (
     <>
       <AppBar
         position="fixed"
         sx={{
-          background: "rgba(0, 0, 0, 0)",
-          backdropFilter: "blur(0px)",
-          boxShadow: "none",
+          background: scrolled ? "rgba(0, 0, 0, 0.17)" : "rgba(0, 0, 0, 0)",
+          backdropFilter: scrolled ? "blur(10px)" : "blur(0px)",
+          boxShadow: scrolled ? "0 2px 10px rgba(0, 0, 0, 0.5)" : "none",
+          transition: "all 0.3s ease",
         }}
       >
-        <Toolbar sx={{ justifyContent: "space-between", py: 1 }}>
+        <Toolbar sx={{ justifyContent: "space-between" }}>
           {/* Logo Section */}
           <Link href="/" style={{ textDecoration: "none" }}>
             <Box
@@ -64,7 +93,7 @@ export default function Navbar() {
           </Link>
 
           {/* Navigation Links */}
-          <Box sx={{ display: "flex", gap: 4 }}>
+          <Box sx={{ display: "flex", gap: 4, alignItems: "center" }}>
             <Link href="/" style={{ textDecoration: "none" }}>
               <Box
                 component="span"
@@ -107,35 +136,67 @@ export default function Navbar() {
               </Box>
             </Link>
 
-            <Link href="/about" style={{ textDecoration: "none" }}>
-              <Box
-                component="span"
-                sx={{
-                  color: "#fff",
-                  fontSize: "16px",
-                  cursor: "pointer",
-                  "&:hover": { color: "#ffd700" },
-                }}
-              >
-                About
-              </Box>
-            </Link>
+            {/* Premium Link - Show for all authenticated users */}
+            {isAuthenticated && (
+              <Link href="/subscription" style={{ textDecoration: "none" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                  }}
+                >
+                  <Box
+                    component="span"
+                    sx={{
+                      color: isPremium ? "#ffd700" : "#fff",
+                      fontSize: "16px",
+                      cursor: "pointer",
+                      fontWeight: isPremium ? 600 : 400,
+                      "&:hover": { color: "#ffd700" },
+                    }}
+                  >
+                    {isPremium ? "Premium" : "Go Premium"}
+                  </Box>
+                  {isPremium && (
+                    <Stars sx={{ fontSize: 18, color: "#ffd700" }} />
+                  )}
+                </Box>
+              </Link>
+            )}
           </Box>
 
           {/* Auth Section */}
-          {isAuthenticated && user ? (
-            <UserProfileDropdown />
-          ) : (
-            <Button
-              variant="primary"
-              size="small"
-              borderRadius="20px"
-              textSize="12px"
-              onClick={handleOpenAuthModal}
-            >
-              Start Streaming
-            </Button>
-          )}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            {/* Premium Badge */}
+            {isAuthenticated && isPremium && (
+              <Chip
+                icon={<Stars />}
+                label="Premium"
+                size="small"
+                sx={{
+                  backgroundColor: "#ffd700",
+                  color: "#000",
+                  fontWeight: 600,
+                  display: { xs: "none", sm: "flex" },
+                }}
+              />
+            )}
+
+            {isAuthenticated && user ? (
+              <UserProfileDropdown />
+            ) : (
+              <Button
+                variant="primary"
+                size="small"
+                borderRadius="20px"
+                textSize="12px"
+                onClick={handleOpenAuthModal}
+              >
+                Start Streaming
+              </Button>
+            )}
+          </Box>
         </Toolbar>
       </AppBar>
 

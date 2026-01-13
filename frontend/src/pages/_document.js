@@ -4,6 +4,8 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head />
+      {/* Razorpay Checkout Script */}
+      <script src="https://checkout.razorpay.com/v1/checkout.js" async />
       <body>
         <Main />
         <NextScript />
