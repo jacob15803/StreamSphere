@@ -42,8 +42,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-<<<<<<< Updated upstream
-=======
 # misc
 .DS_Store
 *.pem
@@ -60,4 +58,3 @@ gl-secret-detection-report.json
 # Security scan results (local testing)
 *.sast.json
 security-reports/
->>>>>>> Stashed changes
