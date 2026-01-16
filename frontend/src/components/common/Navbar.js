@@ -1,5 +1,6 @@
 // src/components/common/Navbar.js
 import { useState } from "react";
+import Image from "next/image";
 import {
   AppBar,
   Toolbar,
@@ -17,12 +18,12 @@ import {
   Bookmark,
   History,
   Logout,
-  Settings,
 } from "@mui/icons-material";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Button from "@/components/common/Button";
 import LoginModal from "@/components/auth/LoginModal";
+import SearchBar from "@/components/common/SearchBar";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
@@ -72,7 +73,8 @@ export default function Navbar() {
                 cursor: "pointer",
               }}
             >
-              <MovieIcon sx={{ fontSize: 32, color: "#fff" }} />
+              {/* <MovieIcon sx={{ fontSize: 32, color: "#fff" }} /> */}
+              <Image src="/streamlogonav.png" alt="logo" width={32} height={32} />
               <Box
                 component="span"
                 sx={{
@@ -87,8 +89,8 @@ export default function Navbar() {
             </Box>
           </Link>
 
-          {/* Navigation Links */}
-          <Box sx={{ display: "flex", gap: 4 }}>
+          {/* Navigation Links & Search */}
+          <Box sx={{ display: "flex", gap: 4, alignItems: "center" }}>
             <Link href="/" style={{ textDecoration: "none" }}>
               <Box
                 component="span"
@@ -131,7 +133,7 @@ export default function Navbar() {
               </Box>
             </Link>
 
-            <Link href="/about" style={{ textDecoration: "none" }}>
+            {/* <Link href="/about" style={{ textDecoration: "none" }}>
               <Box
                 component="span"
                 sx={{
@@ -143,7 +145,9 @@ export default function Navbar() {
               >
                 About
               </Box>
-            </Link>
+            </Link> */}
+
+            <SearchBar />
           </Box>
 
           {/* Auth Section */}
@@ -216,13 +220,6 @@ export default function Navbar() {
                     <History sx={{ color: "#fff" }} />
                   </ListItemIcon>
                   Watch History
-                </MenuItem>
-
-                <MenuItem onClick={() => handleNavigation("/settings")}>
-                  <ListItemIcon>
-                    <Settings sx={{ color: "#fff" }} />
-                  </ListItemIcon>
-                  Settings
                 </MenuItem>
 
                 <Divider sx={{ bgcolor: "rgba(255, 255, 255, 0.1)", my: 1 }} />

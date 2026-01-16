@@ -107,4 +107,24 @@ export const mediaService = {
       throw error;
     }
   },
+
+  // Get Recommendations based on watchlist genres
+  getRecommendations: async (limit = 20) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `/api/v2/watchlist/recommendations?limit=${limit}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching recommendations:", error);
+      throw error;
+    }
+  },
 };
