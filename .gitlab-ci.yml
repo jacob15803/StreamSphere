@@ -1,0 +1,109 @@
+stages:
+  - test
+  - security
+
+# Include GitLab SAST template
+include:
+  - template: Jobs/SAST.gitlab-ci.yml
+
+variables:
+  # Exclude common non-source directories from SAST scanning
+  SAST_EXCLUDED_PATHS: "node_modules, .next, public, dist, build, coverage, tests, __tests__, *.spec.js, *.test.js"
+
+  # Increase search depth for nested project structure
+  SEARCH_MAX_DEPTH: 15
+
+  # Semgrep configuration for better JavaScript/TypeScript analysis
+  SAST_SCANNER_ALLOWED_CLI_OPTS: "--max-target-bytes=2000000 --timeout=10"
+
+  # Enable metrics (set to false if you want to disable)
+  SAST_SEMGREP_METRICS: "true"
+
+# Optional: Add custom test stage jobs before SAST
+frontend-tests:
+  stage: test
+  image: node:18-alpine
+  before_script:
+    - cd frontend
+    - npm ci --cache .npm --prefer-offline
+  script:
+    - npm run lint || true
+    - npm run test || true
+  cache:
+    key:
+      files:
+        - frontend/package-lock.json
+    paths:
+      - frontend/node_modules/
+      - frontend/.next/cache/
+      - frontend/.npm/
+  only:
+    changes:
+      - frontend/**/*
+
+backend-tests:
+  stage: test
+  image: node:18-alpine
+  before_script:
+    - cd server
+    - npm ci --cache .npm --prefer-offline
+  script:
+    - npm run lint || true
+    - npm run test || true
+  cache:
+    key:
+      files:
+        - server/package-lock.json
+    paths:
+      - server/node_modules/
+      - server/.npm/
+  only:
+    changes:
+      - server/**/*
+
+# Override semgrep-sast job to ensure it runs properly
+semgrep-sast:
+  stage: security
+  variables:
+    # Additional configurations specific to your project
+    SEARCH_MAX_DEPTH: 15
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      exists:
+        - "**/*.js"
+        - "**/*.jsx"
+        - "**/*.ts"
+        - "**/*.tsx"
+
+# Create a combined security report job
+security-report:
+  stage: security
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache jq
+  script:
+    - echo "Security Scan Summary"
+    - echo "====================="
+    - |
+      if [ -f gl-sast-report.json ]; then
+        echo "Total vulnerabilities found:"
+        jq '.vulnerabilities | length' gl-sast-report.json || echo "0"
+        echo ""
+        echo "Breakdown by severity:"
+        jq -r '.vulnerabilities | group_by(.severity) | map({severity: .[0].severity, count: length}) | .[] | "\(.severity): \(.count)"' gl-sast-report.json || echo "No vulnerabilities"
+      else
+        echo "No SAST report found"
+      fi
+  dependencies:
+    - semgrep-sast
+  artifacts:
+    reports:
+      sast: gl-sast-report.json
+    paths:
+      - gl-sast-report.json
+    expire_in: 30 days
+  allow_failure: true
+  only:
+    - merge_requests
+    - main
+    - develop

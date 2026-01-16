@@ -1,0 +1,57 @@
+# Custom SAST Ruleset for StreamSphere
+# This file customizes the security scanning rules for your Next.js + Express.js project
+
+[semgrep]
+  description = "Custom ruleset for StreamSphere streaming application"
+  
+  # Example: Disable specific rules that may cause false positives
+  # Uncomment and modify these as needed based on your scan results
+  
+  # [[semgrep.ruleset]]
+  #   disable = true
+  #   [semgrep.ruleset.identifier]
+  #     type = "semgrep_id"
+  #     value = "eslint.detect-object-injection"
+  
+  # Enable strict security rules for authentication
+  [[semgrep.ruleset]]
+    [semgrep.ruleset.identifier]
+      type = "semgrep_id"
+      value = "javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage"
+  
+  # Enable SQL injection detection
+  [[semgrep.ruleset]]
+    [semgrep.ruleset.identifier]
+      type = "semgrep_id"
+      value = "javascript.sequelize.security.audit.sequelize-injection-express.express-sequelize-injection"
+  
+  # Enable XSS detection
+  [[semgrep.ruleset]]
+    [semgrep.ruleset.identifier]
+      type = "semgrep_id"
+      value = "javascript.express.security.audit.xss.template-injection.express-template-injection"
+  
+  # Enable JWT security checks
+  [[semgrep.ruleset]]
+    [semgrep.ruleset.identifier]
+      type = "semgrep_id"
+      value = "javascript.jwt.security.jwt-decode-without-verify.jwt-decode-without-verify"
+  
+  # Enable password handling checks
+  [[semgrep.ruleset]]
+    [semgrep.ruleset.identifier]
+      type = "semgrep_id"
+      value = "javascript.express.security.audit.express-cookie-session-no-secure.express-cookie-session-no-secure"
+
+# Additional passthrough rules for comprehensive coverage
+# Uncomment to add custom Semgrep rules from the registry
+
+# [[semgrep.passthrough]]
+#   type = "url"
+#   value = "https://semgrep.dev/c/p/react"
+#   target = "react-rules.yml"
+
+# [[semgrep.passthrough]]
+#   type = "url"
+#   value = "https://semgrep.dev/c/p/nodejs"
+#   target = "nodejs-rules.yml"

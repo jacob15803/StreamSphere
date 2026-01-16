@@ -42,3 +42,22 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+<<<<<<< Updated upstream
+=======
+# misc
+.DS_Store
+*.pem
+.cursor/
+
+# Add these lines to your existing .gitignore file
+
+# GitLab CI/CD artifacts
+gl-sast-report.json
+gl-dependency-scanning-report.json
+gl-secret-detection-report.json
+.gitlab-ci-local/
+
+# Security scan results (local testing)
+*.sast.json
+security-reports/
+>>>>>>> Stashed changes
