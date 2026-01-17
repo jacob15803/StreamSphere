@@ -47,7 +47,6 @@ next-env.d.ts
 *.pem
 .cursor/
 
-<<<<<<< HEAD
 # Add these lines to your existing .gitignore file
 
 # GitLab CI/CD artifacts
@@ -59,5 +58,3 @@ gl-secret-detection-report.json
 # Security scan results (local testing)
 *.sast.json
 security-reports/
-=======
->>>>>>> bf5f3254c7f1fb8e8b83e0d970b6c7705dee20b8
