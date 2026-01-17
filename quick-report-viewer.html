@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StreamSphere SAST Report Viewer</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        opacity: 0.9;
+        font-size: 1.1em;
+      }
+
+      .upload-section {
+        padding: 40px;
+        text-align: center;
+        background: #f8f9fa;
+      }
+
+      .upload-box {
+        border: 3px dashed #667eea;
+        border-radius: 12px;
+        padding: 40px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .upload-box:hover {
+        border-color: #764ba2;
+        background: #f0f4ff;
+      }
+
+      .upload-box.dragover {
+        border-color: #764ba2;
+        background: #e8f0ff;
+        transform: scale(1.02);
+      }
+
+      input[type="file"] {
+        display: none;
+      }
+
+      .upload-icon {
+        font-size: 4em;
+        margin-bottom: 20px;
+      }
+
+      .btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1em;
+        font-weight: 600;
+        margin-top: 15px;
+        transition: transform 0.2s;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        padding: 30px;
+        background: #f8f9fa;
+      }
+
+      .card {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s;
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+      }
+
+      .card-number {
+        font-size: 3em;
+        font-weight: bold;
+        margin: 10px 0;
+      }
+
+      .card-label {
+        color: #666;
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .critical {
+        background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+        color: white;
+      }
+      .high {
+        background: linear-gradient(135deg, #ff8800 0%, #cc6600 100%);
+        color: white;
+      }
+      .medium {
+        background: linear-gradient(135deg, #ffbb33 0%, #ff9900 100%);
+        color: white;
+      }
+      .low {
+        background: linear-gradient(135deg, #00c851 0%, #007e33 100%);
+        color: white;
+      }
+      .info {
+        background: linear-gradient(135deg, #33b5e5 0%, #0099cc 100%);
+        color: white;
+      }
+
+      .vulnerabilities {
+        padding: 30px;
+      }
+
+      .vuln-item {
+        background: white;
+        border-left: 5px solid #ccc;
+        padding: 20px;
+        margin: 15px 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+      }
+
+      .vuln-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .vuln-critical {
+        border-left-color: #ff4444;
+      }
+      .vuln-high {
+        border-left-color: #ff8800;
+      }
+      .vuln-medium {
+        border-left-color: #ffbb33;
+      }
+      .vuln-low {
+        border-left-color: #00c851;
+      }
+      .vuln-info {
+        border-left-color: #33b5e5;
+      }
+
+      .vuln-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 15px;
+      }
+
+      .severity-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.85em;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .badge-critical {
+        background: #ff4444;
+        color: white;
+      }
+      .badge-high {
+        background: #ff8800;
+        color: white;
+      }
+      .badge-medium {
+        background: #ffbb33;
+        color: white;
+      }
+      .badge-low {
+        background: #00c851;
+        color: white;
+      }
+      .badge-info {
+        background: #33b5e5;
+        color: white;
+      }
+
+      .vuln-title {
+        font-size: 1.3em;
+        font-weight: 600;
+        color: #333;
+        flex: 1;
+      }
+
+      .vuln-location {
+        background: #f0f4ff;
+        padding: 10px 15px;
+        border-radius: 6px;
+        margin: 10px 0;
+        font-family: "Courier New", monospace;
+        font-size: 0.9em;
+        color: #667eea;
+      }
+
+      .vuln-description {
+        color: #666;
+        line-height: 1.6;
+        margin-top: 10px;
+      }
+
+      .no-results {
+        text-align: center;
+        padding: 60px 20px;
+        color: #999;
+      }
+
+      .no-results .icon {
+        font-size: 5em;
+        margin-bottom: 20px;
+      }
+
+      .success-message {
+        background: linear-gradient(135deg, #00c851 0%, #007e33 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+        border-radius: 12px;
+        margin: 30px;
+      }
+
+      .success-message h2 {
+        font-size: 2em;
+        margin-bottom: 10px;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .filter-section {
+        padding: 20px 30px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+      }
+
+      .filter-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .filter-btn {
+        padding: 8px 16px;
+        border: 2px solid #dee2e6;
+        background: white;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9em;
+        transition: all 0.2s;
+      }
+
+      .filter-btn:hover {
+        border-color: #667eea;
+      }
+
+      .filter-btn.active {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🛡️ StreamSphere SAST Report Viewer</h1>
+        <p>
+          Upload your gl-sast-report.json file to analyze security
+          vulnerabilities
+        </p>
+      </div>
+
+      <div id="uploadSection" class="upload-section">
+        <div class="upload-box" id="uploadBox">
+          <div class="upload-icon">📁</div>
+          <h2>Drop your SAST report here</h2>
+          <p style="color: #666; margin: 15px 0">or</p>
+          <button
+            class="btn"
+            onclick="document.getElementById('fileInput').click()"
+          >
+            Choose File
+          </button>
+          <input type="file" id="fileInput" accept=".json" />
+          <p style="color: #999; margin-top: 20px; font-size: 0.9em">
+            Supported file: gl-sast-report.json
+          </p>
+        </div>
+      </div>
+
+      <div id="resultsSection" class="hidden">
+        <div class="summary" id="summary"></div>
+
+        <div class="filter-section">
+          <div class="filter-buttons">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="Critical">Critical</button>
+            <button class="filter-btn" data-filter="High">High</button>
+            <button class="filter-btn" data-filter="Medium">Medium</button>
+            <button class="filter-btn" data-filter="Low">Low</button>
+            <button class="filter-btn" data-filter="Info">Info</button>
+          </div>
+        </div>
+
+        <div class="vulnerabilities" id="vulnerabilities"></div>
+      </div>
+    </div>
+
+    <script>
+      let allVulnerabilities = [];
+      let currentFilter = "all";
+
+      const uploadBox = document.getElementById("uploadBox");
+      const fileInput = document.getElementById("fileInput");
+
+      // Drag and drop handlers
+      uploadBox.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadBox.classList.add("dragover");
+      });
+
+      uploadBox.addEventListener("dragleave", () => {
+        uploadBox.classList.remove("dragover");
+      });
+
+      uploadBox.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadBox.classList.remove("dragover");
+        const file = e.dataTransfer.files[0];
+        if (file) handleFile(file);
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) handleFile(file);
+      });
+
+      function handleFile(file) {
+        if (!file.name.endsWith(".json")) {
+          alert("Please upload a valid JSON file");
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = JSON.parse(e.target.result);
+            displayResults(data);
+          } catch (error) {
+            alert("Error parsing JSON file: " + error.message);
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function displayResults(data) {
+        allVulnerabilities = data.vulnerabilities || [];
+
+        document.getElementById("uploadSection").classList.add("hidden");
+        document.getElementById("resultsSection").classList.remove("hidden");
+
+        displaySummary();
+        displayVulnerabilities();
+        setupFilters();
+      }
+
+      function displaySummary() {
+        const counts = {
+          total: allVulnerabilities.length,
+          Critical: 0,
+          High: 0,
+          Medium: 0,
+          Low: 0,
+          Info: 0,
+        };
+
+        allVulnerabilities.forEach((v) => {
+          const severity = v.severity || "Info";
+          counts[severity] = (counts[severity] || 0) + 1;
+        });
+
+        const summaryHTML = `
+                <div class="card">
+                    <div class="card-label">Total Issues</div>
+                    <div class="card-number">${counts.total}</div>
+                </div>
+                <div class="card critical">
+                    <div class="card-label">Critical</div>
+                    <div class="card-number">${counts.Critical}</div>
+                </div>
+                <div class="card high">
+                    <div class="card-label">High</div>
+                    <div class="card-number">${counts.High}</div>
+                </div>
+                <div class="card medium">
+                    <div class="card-label">Medium</div>
+                    <div class="card-number">${counts.Medium}</div>
+                </div>
+                <div class="card low">
+                    <div class="card-label">Low</div>
+                    <div class="card-number">${counts.Low}</div>
+                </div>
+                <div class="card info">
+                    <div class="card-label">Info</div>
+                    <div class="card-number">${counts.Info}</div>
+                </div>
+            `;
+
+        document.getElementById("summary").innerHTML = summaryHTML;
+      }
+
+      function displayVulnerabilities() {
+        const vulnContainer = document.getElementById("vulnerabilities");
+
+        const filteredVulns =
+          currentFilter === "all"
+            ? allVulnerabilities
+            : allVulnerabilities.filter((v) => v.severity === currentFilter);
+
+        if (filteredVulns.length === 0) {
+          vulnContainer.innerHTML = `
+                    <div class="success-message">
+                        <div style="font-size: 4em; margin-bottom: 10px;">🎉</div>
+                        <h2>No ${currentFilter === "all" ? "" : currentFilter} Vulnerabilities Found!</h2>
+                        <p>Your code looks secure. Great job!</p>
+                    </div>
+                `;
+          return;
+        }
+
+        const vulnHTML = filteredVulns
+          .map((v) => {
+            const severity = v.severity || "Info";
+            const severityLower = severity.toLowerCase();
+            const location = v.location || {};
+            const file = location.file || "Unknown file";
+            const line = location.start_line || "?";
+
+            return `
+                    <div class="vuln-item vuln-${severityLower}">
+                        <div class="vuln-header">
+                            <span class="severity-badge badge-${severityLower}">${severity}</span>
+                            <span class="vuln-title">${v.name || "Security Issue"}</span>
+                        </div>
+                        <div class="vuln-location">📂 ${file}:${line}</div>
+                        <div class="vuln-description">
+                            ${v.description || v.message || "No description available"}
+                        </div>
+                    </div>
+                `;
+          })
+          .join("");
+
+        vulnContainer.innerHTML = vulnHTML;
+      }
+
+      function setupFilters() {
+        const filterBtns = document.querySelectorAll(".filter-btn");
+        filterBtns.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            filterBtns.forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            currentFilter = btn.dataset.filter;
+            displayVulnerabilities();
+          });
+        });
+      }
+    </script>
+  </body>
+</html>

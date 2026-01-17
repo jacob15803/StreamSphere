@@ -9,9 +9,9 @@ const { Media } = require("./models/Media");
 
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ Connected to MongoDB"))
+  .then(() => console.log(" Connected to MongoDB"))
   .catch((err) => {
-    console.error("❌ MongoDB connection error:", err);
+    console.error(" MongoDB connection error:", err);
     process.exit(1);
   });
 
@@ -181,12 +181,12 @@ async function seedDatabase() {
     console.log("🗑️  Clearing existing data...");
     await Genre.deleteMany({});
     await Media.deleteMany({});
-    console.log("✅ Existing data cleared\n");
+    console.log(" Existing data cleared\n");
 
     // Create genres
     console.log("📚 Creating genres...");
     const createdGenres = await Genre.insertMany(genres);
-    console.log(`✅ ${createdGenres.length} genres created\n`);
+    console.log(` ${createdGenres.length} genres created\n`);
 
     // Build genre ID map
     const genreIds = {};
@@ -198,7 +198,7 @@ async function seedDatabase() {
     console.log("🎬 Creating media content...");
     const sampleMedia = getSampleMedia(genreIds);
     const createdMedia = await Media.insertMany(sampleMedia);
-    console.log(`✅ ${createdMedia.length} media items created\n`);
+    console.log(` ${createdMedia.length} media items created\n`);
 
     // Summary
     const movies = createdMedia.filter((m) => m.type === "movie");
@@ -219,7 +219,7 @@ async function seedDatabase() {
         media.episodes.forEach((ep) => {
           const filename = ep.videoUrl.split("/").pop();
           console.log(
-            `      - S${ep.seasonNumber}E${ep.episodeNumber}: ${filename}`
+            `      - S${ep.seasonNumber}E${ep.episodeNumber}: ${filename}`,
           );
         });
         if (media.trailerUrl) {
@@ -246,7 +246,7 @@ async function seedDatabase() {
 
     process.exit(0);
   } catch (error) {
-    console.error("\n❌ Error seeding database:", error);
+    console.error("\n Error seeding database:", error);
     console.error("\nTroubleshooting:");
     console.error("   - Check MongoDB connection");
     console.error("   - Verify .env variables");

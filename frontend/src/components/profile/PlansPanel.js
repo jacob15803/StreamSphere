@@ -14,8 +14,7 @@ export default function PlansPanel({ user, onPlanUpdate }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const isPremium =
-    user?.subscriptionType?.toLowerCase() === "premium";
+  const isPremium = user?.subscriptionType?.toLowerCase() === "premium";
 
   useEffect(() => {
     const script = document.createElement("script");
@@ -83,7 +82,7 @@ export default function PlansPanel({ user, onPlanUpdate }) {
   };
 
   return (
-    /* ✅ SINGLE UNIFORM BACKGROUND */
+    /*  SINGLE UNIFORM BACKGROUND */
     <Box
       sx={{
         width: "100%",
@@ -92,8 +91,6 @@ export default function PlansPanel({ user, onPlanUpdate }) {
         py: 6,
       }}
     >
-      
-
       {error && (
         <Alert severity="error" sx={{ maxWidth: 600, mx: "auto", mb: 3 }}>
           {error}
@@ -148,9 +145,7 @@ export default function PlansPanel({ user, onPlanUpdate }) {
 
                 {plan.features.map((f) => (
                   <Box key={f} display="flex" alignItems="center" mb={1}>
-                    <CheckCircleIcon
-                      sx={{ color: plan.accent, mr: 1 }}
-                    />
+                    <CheckCircleIcon sx={{ color: plan.accent, mr: 1 }} />
                     <Typography>{f}</Typography>
                   </Box>
                 ))}
@@ -187,5 +182,3 @@ export default function PlansPanel({ user, onPlanUpdate }) {
     </Box>
   );
 }
-
-
