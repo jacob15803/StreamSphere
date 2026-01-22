@@ -1,4 +1,3 @@
-// src/pages/subscription.js
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useRouter } from "next/router";
@@ -24,7 +23,6 @@ import {
 import { getCurrentUser } from "@/redux/actions/authActions";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
-// Load Razorpay script
 const loadRazorpay = () => {
   return new Promise((resolve) => {
     const script = document.createElement("script");
@@ -40,7 +38,7 @@ function SubscriptionPage() {
   const dispatch = useDispatch();
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { plans, currentSubscription, loading, error } = useSelector(
-    (state) => state.subscription
+    (state) => state.subscription,
   );
 
   const [processingPayment, setProcessingPayment] = useState(false);
@@ -57,7 +55,6 @@ function SubscriptionPage() {
     try {
       setProcessingPayment(true);
 
-      // Load Razorpay script
       const res = await loadRazorpay();
       if (!res) {
         alert("Razorpay SDK failed to load. Please check your connection.");
@@ -65,7 +62,6 @@ function SubscriptionPage() {
         return;
       }
 
-      // Create order
       const orderResult = await dispatch(createSubscriptionOrder(plan.id));
 
       if (!orderResult.success) {
@@ -76,7 +72,6 @@ function SubscriptionPage() {
 
       const { orderId, amount, currency } = orderResult.data;
 
-      // Razorpay options
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: amount * 100,
@@ -86,19 +81,17 @@ function SubscriptionPage() {
         order_id: orderId,
         handler: async function (response) {
           try {
-            // Verify payment
             const verifyResult = await dispatch(
               verifySubscriptionPayment({
                 paymentId: response.razorpay_payment_id,
                 orderId: response.razorpay_order_id,
                 signature: response.razorpay_signature,
-              })
+              }),
             );
 
             if (verifyResult.success) {
               setSuccessMessage("Subscription activated successfully! 🎉");
 
-              // Refresh user data
               await dispatch(getCurrentUser());
               await dispatch(getSubscriptionStatus());
 
@@ -166,7 +159,6 @@ function SubscriptionPage() {
       }}
     >
       <Container maxWidth="lg">
-        {/* Header */}
         <Box sx={{ textAlign: "center", mb: 6 }}>
           <Typography
             variant="h3"
@@ -189,7 +181,6 @@ function SubscriptionPage() {
             Unlock unlimited streaming with premium access
           </Typography>
 
-          {/* Current Subscription Status */}
           {isPremium && (
             <Alert
               severity="success"
@@ -234,7 +225,6 @@ function SubscriptionPage() {
           )}
         </Box>
 
-        {/* Pricing Cards */}
         <Grid container spacing={4} justifyContent="center">
           {plans.map((plan) => {
             const isRecommended = plan.id === "quarterly";
@@ -242,8 +232,8 @@ function SubscriptionPage() {
               plan.id === "quarterly"
                 ? Math.round(((199 * 3 - plan.amount) / (199 * 3)) * 100)
                 : plan.id === "yearly"
-                ? Math.round(((199 * 12 - plan.amount) / (199 * 12)) * 100)
-                : 0;
+                  ? Math.round(((199 * 12 - plan.amount) / (199 * 12)) * 100)
+                  : 0;
 
             return (
               <Grid item xs={12} sm={6} md={4} key={plan.id}>
@@ -264,7 +254,6 @@ function SubscriptionPage() {
                     },
                   }}
                 >
-                  {/* Recommended Badge */}
                   {isRecommended && (
                     <Chip
                       icon={<Stars />}
@@ -281,7 +270,6 @@ function SubscriptionPage() {
                   )}
 
                   <CardContent sx={{ p: 4 }}>
-                    {/* Plan Name */}
                     <Typography
                       variant="h5"
                       sx={{
@@ -293,7 +281,6 @@ function SubscriptionPage() {
                       {plan.name}
                     </Typography>
 
-                    {/* Duration */}
                     <Typography
                       variant="body2"
                       sx={{
@@ -304,7 +291,6 @@ function SubscriptionPage() {
                       {plan.duration} days access
                     </Typography>
 
-                    {/* Price */}
                     <Box sx={{ mb: 3 }}>
                       <Typography
                         variant="h3"
@@ -314,7 +300,7 @@ function SubscriptionPage() {
                           mb: 0.5,
                         }}
                       >
-                        â‚¹{plan.amount}
+                        ₹{plan.amount}
                       </Typography>
                       <Typography
                         variant="body2"
@@ -334,12 +320,11 @@ function SubscriptionPage() {
                             Save {savings}%
                           </Typography>
                         )}
-                        â‚¹{Math.round(plan.amount / (plan.duration / 30))}
+                        ₹{Math.round(plan.amount / (plan.duration / 30))}
                         /month
                       </Typography>
                     </Box>
 
-                    {/* Features */}
                     <Box sx={{ mb: 4 }}>
                       {[
                         "Unlimited Movies & Series",
@@ -370,7 +355,6 @@ function SubscriptionPage() {
                       ))}
                     </Box>
 
-                    {/* Subscribe Button */}
                     <Button
                       variant={isRecommended ? "primary" : "outlined"}
                       fullWidth
@@ -391,8 +375,8 @@ function SubscriptionPage() {
                       {isPremium
                         ? "Already Subscribed"
                         : processingPayment
-                        ? "Processing..."
-                        : "Subscribe Now"}
+                          ? "Processing..."
+                          : "Subscribe Now"}
                     </Button>
                   </CardContent>
                 </Card>
@@ -401,7 +385,7 @@ function SubscriptionPage() {
           })}
         </Grid>
 
-        {/* Benefits Section */}
+        {/* FIXED Benefits Section */}
         <Box sx={{ mt: 8, textAlign: "center" }}>
           <Typography
             variant="h4"
@@ -414,7 +398,7 @@ function SubscriptionPage() {
             Why Go Premium?
           </Typography>
 
-          <Grid container spacing={3}>
+          <Grid container spacing={3} justifyContent="center">
             {[
               {
                 title: "Unlimited Access",
@@ -444,6 +428,15 @@ function SubscriptionPage() {
                     backgroundColor: "#1a1a1a",
                     borderRadius: 2,
                     border: "1px solid rgba(255, 255, 255, 0.1)",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      transform: "translateY(-4px)",
+                      borderColor: "#ffd700",
+                      boxShadow: "0 8px 16px rgba(0, 0, 0, 0.3)",
+                    },
                   }}
                 >
                   <Typography
@@ -451,7 +444,8 @@ function SubscriptionPage() {
                     sx={{
                       color: "#ffd700",
                       fontWeight: 600,
-                      mb: 1,
+                      mb: 1.5,
+                      fontSize: "1.1rem",
                     }}
                   >
                     {benefit.title}
@@ -460,6 +454,8 @@ function SubscriptionPage() {
                     variant="body2"
                     sx={{
                       color: "rgba(255, 255, 255, 0.7)",
+                      lineHeight: 1.6,
+                      fontSize: "0.95rem",
                     }}
                   >
                     {benefit.description}

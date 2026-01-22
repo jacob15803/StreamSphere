@@ -1,4 +1,3 @@
-// src/pages/index.js
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import Head from "next/head";
@@ -26,7 +25,6 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch featured content for slider
         const featuredData = await mediaService.getFeaturedContent(5);
         setFeaturedContent(featuredData.data);
 
@@ -73,10 +71,8 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      {/* Hero Slider */}
       <HeroSlider slides={featuredContent} />
 
-      {/* Main Content - All Sections */}
       <Box
         sx={{
           mt: -14,
@@ -84,7 +80,7 @@ export default function Home() {
           zIndex: 10,
         }}
       >
-        {/* Continue Watching */}
+        {/* Continue Watching - FIXED */}
         {isAuthenticated && continueWatching.length > 0 && (
           <MediaRow title="Continue Watching">
             {continueWatching.map((item) => (
@@ -92,12 +88,16 @@ export default function Home() {
                 key={`${item.media._id}-${item.seasonNumber}-${item.episodeNumber}`}
                 media={item.media}
                 showWatchlistButton={true}
+                continueWatchingData={{
+                  seasonNumber: item.seasonNumber,
+                  episodeNumber: item.episodeNumber,
+                  lastWatchedTime: item.lastWatchedTime,
+                }}
               />
             ))}
           </MediaRow>
         )}
 
-        {/* Top Rated Movies */}
         <MediaRow title="Top Rated Movies">
           {topRatedMovies.map((movie) => (
             <MediaCard
@@ -108,7 +108,6 @@ export default function Home() {
           ))}
         </MediaRow>
 
-        {/* Top Rated Series */}
         <MediaRow title="Top Rated Series">
           {topRatedSeries.map((series) => (
             <MediaCard
@@ -119,7 +118,6 @@ export default function Home() {
           ))}
         </MediaRow>
 
-        {/* Action Movies */}
         <MediaRow title="Action Movies">
           {actionMovies.map((movie) => (
             <MediaCard
@@ -130,21 +128,18 @@ export default function Home() {
           ))}
         </MediaRow>
 
-        {/* Thriller Content */}
         <MediaRow title="Thriller">
           {thrillerContent.map((item) => (
             <MediaCard key={item._id} media={item} showWatchlistButton={true} />
           ))}
         </MediaRow>
 
-        {/* Drama Collection */}
         <MediaRow title="Drama">
           {dramaContent.map((item) => (
             <MediaCard key={item._id} media={item} showWatchlistButton={true} />
           ))}
         </MediaRow>
 
-        {/* Sci-Fi Adventures */}
         <MediaRow title="Sci-Fi Adventures">
           {sciFiContent.map((item) => (
             <MediaCard key={item._id} media={item} showWatchlistButton={true} />

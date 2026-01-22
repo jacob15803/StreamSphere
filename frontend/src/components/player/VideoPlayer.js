@@ -1,4 +1,3 @@
-// src/components/player/VideoPlayer.js
 import { useRef, useState, useEffect } from "react";
 import {
   Box,
@@ -7,6 +6,8 @@ import {
   Typography,
   CircularProgress,
   Alert,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import {
   PlayArrow,
@@ -17,6 +18,8 @@ import {
   FullscreenExit,
   Forward10,
   Replay10,
+  AspectRatio,
+  GraphicEq,
 } from "@mui/icons-material";
 
 export default function VideoPlayer({
@@ -26,12 +29,12 @@ export default function VideoPlayer({
   initialTime = 0,
   onEnded,
   autoPlay = false,
+  shouldTrackProgress = true,
 }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const progressIntervalRef = useRef(null);
 
-  // Player states
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(initialTime);
   const [duration, setDuration] = useState(0);
@@ -42,8 +45,12 @@ export default function VideoPlayer({
   const [isLoading, setIsLoading] = useState(true);
   const [buffered, setBuffered] = useState(0);
   const [videoError, setVideoError] = useState(null);
+  const [aspectRatio, setAspectRatio] = useState("contain");
+  const [audioTracks, setAudioTracks] = useState([]);
+  const [selectedAudioTrack, setSelectedAudioTrack] = useState(0);
+  const [aspectMenuAnchor, setAspectMenuAnchor] = useState(null);
+  const [audioMenuAnchor, setAudioMenuAnchor] = useState(null);
 
-  // Hide controls after 3 seconds of inactivity
   useEffect(() => {
     let timeout;
     if (showControls && isPlaying) {
@@ -54,14 +61,12 @@ export default function VideoPlayer({
     return () => clearTimeout(timeout);
   }, [showControls, isPlaying]);
 
-  // Set initial time when video loads
   useEffect(() => {
     if (videoRef.current && initialTime > 0 && duration > 0) {
       videoRef.current.currentTime = initialTime;
     }
   }, [initialTime, duration]);
 
-  // Handle video URL changes
   useEffect(() => {
     if (videoRef.current && videoUrl) {
       setIsLoading(true);
@@ -70,7 +75,6 @@ export default function VideoPlayer({
     }
   }, [videoUrl]);
 
-  // Auto play if requested
   useEffect(() => {
     if (autoPlay && videoRef.current && !isLoading && !videoError) {
       const playPromise = videoRef.current.play();
@@ -87,14 +91,13 @@ export default function VideoPlayer({
     }
   }, [autoPlay, isLoading, videoError]);
 
-  // Track progress for continue watching - NOW PASSES DURATION
   useEffect(() => {
-    if (isPlaying && onProgress) {
+    if (isPlaying && onProgress && shouldTrackProgress) {
       progressIntervalRef.current = setInterval(() => {
         if (videoRef.current) {
           onProgress(videoRef.current.currentTime, videoRef.current.duration);
         }
-      }, 10000); // Update every 10 seconds
+      }, 10000);
     } else {
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
@@ -106,35 +109,67 @@ export default function VideoPlayer({
         clearInterval(progressIntervalRef.current);
       }
     };
-  }, [isPlaying, onProgress]);
+  }, [isPlaying, onProgress, shouldTrackProgress]);
 
-  // Video event handlers
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       setDuration(videoRef.current.duration);
       setIsLoading(false);
       setVideoError(null);
-      console.log(
-        "Video metadata loaded, duration:",
-        videoRef.current.duration
-      );
+
+      const video = videoRef.current;
+
+      // Ensure audio is enabled
+      video.muted = false;
+      if (volume > 0) {
+        video.volume = volume;
+      }
+
+      if (video.audioTracks && video.audioTracks.length > 0) {
+        const tracks = Array.from(video.audioTracks).map((track, index) => ({
+          index,
+          label: track.label || `Audio Track ${index + 1}`,
+          language: track.language || "unknown",
+          enabled: track.enabled,
+        }));
+
+        // Enable first track if none are enabled
+        let enabledIndex = tracks.findIndex((t) => t.enabled);
+        if (enabledIndex === -1 && video.audioTracks.length > 0) {
+          video.audioTracks[0].enabled = true;
+          tracks[0].enabled = true;
+          enabledIndex = 0;
+        }
+
+        setAudioTracks(tracks);
+        setSelectedAudioTrack(enabledIndex);
+      } else {
+        // Always show default audio option
+        setAudioTracks([
+          {
+            index: 0,
+            label: "Default Audio",
+            language: "unknown",
+            enabled: true,
+          },
+        ]);
+        setSelectedAudioTrack(0);
+      }
     }
   };
 
   const handleCanPlay = () => {
     setIsLoading(false);
     setVideoError(null);
-    console.log("Video can play");
   };
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime);
 
-      // Update buffered
       if (videoRef.current.buffered.length > 0) {
         const bufferedEnd = videoRef.current.buffered.end(
-          videoRef.current.buffered.length - 1
+          videoRef.current.buffered.length - 1,
         );
         setBuffered((bufferedEnd / videoRef.current.duration) * 100);
       }
@@ -232,7 +267,7 @@ export default function VideoPlayer({
     if (videoRef.current) {
       videoRef.current.currentTime = Math.min(
         videoRef.current.currentTime + 10,
-        duration
+        duration,
       );
     }
   };
@@ -241,7 +276,7 @@ export default function VideoPlayer({
     if (videoRef.current) {
       videoRef.current.currentTime = Math.max(
         videoRef.current.currentTime - 10,
-        0
+        0,
       );
     }
   };
@@ -270,7 +305,6 @@ export default function VideoPlayer({
     }
   };
 
-  // Listen for fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(
@@ -279,7 +313,7 @@ export default function VideoPlayer({
           document.webkitFullscreenElement ||
           document.mozFullScreenElement ||
           document.msFullscreenElement
-        )
+        ),
       );
     };
 
@@ -292,15 +326,15 @@ export default function VideoPlayer({
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener(
         "webkitfullscreenchange",
-        handleFullscreenChange
+        handleFullscreenChange,
       );
       document.removeEventListener(
         "mozfullscreenchange",
-        handleFullscreenChange
+        handleFullscreenChange,
       );
       document.removeEventListener(
         "MSFullscreenChange",
-        handleFullscreenChange
+        handleFullscreenChange,
       );
     };
   }, []);
@@ -326,6 +360,46 @@ export default function VideoPlayer({
     return `${minutes}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const handleAspectRatioClick = (event) => {
+    setAspectMenuAnchor(event.currentTarget);
+  };
+
+  const handleAspectRatioClose = () => {
+    setAspectMenuAnchor(null);
+  };
+
+  const handleAspectRatioChange = (ratio) => {
+    setAspectRatio(ratio);
+    handleAspectRatioClose();
+  };
+
+  const handleAudioTrackClick = (event) => {
+    setAudioMenuAnchor(event.currentTarget);
+  };
+
+  const handleAudioTrackClose = () => {
+    setAudioMenuAnchor(null);
+  };
+
+  const handleAudioTrackChange = (index) => {
+    if (videoRef.current && videoRef.current.audioTracks) {
+      for (let i = 0; i < videoRef.current.audioTracks.length; i++) {
+        videoRef.current.audioTracks[i].enabled = false;
+      }
+      videoRef.current.audioTracks[index].enabled = true;
+      setSelectedAudioTrack(index);
+    }
+    handleAudioTrackClose();
+  };
+
+  const aspectRatios = [
+    { label: "Fit", value: "contain" },
+    { label: "Fill", value: "cover" },
+    { label: "Stretch", value: "fill" },
+    { label: "16:9", value: "16/9" },
+    { label: "4:3", value: "4/3" },
+  ];
+
   return (
     <Box
       ref={containerRef}
@@ -337,9 +411,17 @@ export default function VideoPlayer({
         height: "100%",
         backgroundColor: "#000",
         cursor: showControls ? "default" : "none",
+        "& video::-webkit-media-controls": {
+          display: "none !important",
+        },
+        "& video::-webkit-media-controls-enclosure": {
+          display: "none !important",
+        },
+        "& video::-webkit-media-controls-panel": {
+          display: "none !important",
+        },
       }}
     >
-      {/* Video Element */}
       <video
         ref={videoRef}
         poster={posterUrl}
@@ -353,18 +435,31 @@ export default function VideoPlayer({
         crossOrigin="anonymous"
         playsInline
         preload="metadata"
+        controlsList="nodownload nofullscreen noremoteplayback"
+        disablePictureInPicture
         style={{
           width: "100%",
           height: "100%",
-          objectFit: "contain",
+          objectFit: aspectRatio.includes("/") ? "contain" : aspectRatio,
+          aspectRatio: aspectRatio.includes("/") ? aspectRatio : undefined,
         }}
         onClick={handlePlayPause}
+        onContextMenu={(e) => e.preventDefault()}
       >
-        {videoUrl && <source src={videoUrl} type="video/mp4" />}
+        {videoUrl && (
+          <>
+            <source
+              src={videoUrl}
+              type={
+                videoUrl.endsWith(".mkv") ? "video/x-matroska" : "video/mp4"
+              }
+            />
+            <source src={videoUrl} />
+          </>
+        )}
         Your browser does not support the video tag.
       </video>
 
-      {/* Error Message */}
       {videoError && (
         <Box
           sx={{
@@ -393,7 +488,6 @@ export default function VideoPlayer({
         </Box>
       )}
 
-      {/* Loading Spinner */}
       {isLoading && !videoError && (
         <Box
           sx={{
@@ -407,7 +501,6 @@ export default function VideoPlayer({
         </Box>
       )}
 
-      {/* Center Play Button (when paused) */}
       {!isPlaying && !isLoading && !videoError && (
         <Box
           onClick={handlePlayPause}
@@ -435,7 +528,6 @@ export default function VideoPlayer({
         </Box>
       )}
 
-      {/* Controls */}
       {!videoError && (
         <Box
           sx={{
@@ -450,21 +542,7 @@ export default function VideoPlayer({
             padding: 2,
           }}
         >
-          {/* Progress Bar */}
           <Box sx={{ mb: 1, px: 1, position: "relative" }}>
-            {/* Buffered Bar */}
-            <Box
-              sx={{
-                position: "absolute",
-                height: 4,
-                backgroundColor: "rgba(255, 255, 255, 0.3)",
-                width: `${buffered}%`,
-                borderRadius: 2,
-                bottom: 35,
-                left: 16,
-              }}
-            />
-
             <Slider
               value={currentTime}
               max={duration || 100}
@@ -481,6 +559,20 @@ export default function VideoPlayer({
                 },
                 "& .MuiSlider-rail": {
                   backgroundColor: "rgba(255, 255, 255, 0.2)",
+                },
+                "& .MuiSlider-track": {
+                  border: "none",
+                },
+                "&::before": {
+                  content: '""',
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  height: 4,
+                  backgroundColor: "rgba(255, 255, 255, 0.4)",
+                  width: `${buffered}%`,
+                  borderRadius: 2,
+                  zIndex: -1,
                 },
               }}
             />
@@ -500,7 +592,6 @@ export default function VideoPlayer({
             </Box>
           </Box>
 
-          {/* Control Buttons */}
           <Box
             sx={{
               display: "flex",
@@ -509,7 +600,6 @@ export default function VideoPlayer({
               px: 1,
             }}
           >
-            {/* Left Controls */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <IconButton onClick={handlePlayPause} sx={{ color: "#fff" }}>
                 {isPlaying ? <Pause /> : <PlayArrow />}
@@ -523,7 +613,6 @@ export default function VideoPlayer({
                 <Forward10 />
               </IconButton>
 
-              {/* Volume Control */}
               <Box
                 sx={{ display: "flex", alignItems: "center", gap: 1, ml: 2 }}
               >
@@ -547,8 +636,23 @@ export default function VideoPlayer({
               </Box>
             </Box>
 
-            {/* Right Controls */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <IconButton
+                onClick={handleAspectRatioClick}
+                sx={{ color: "#fff" }}
+                title="Aspect Ratio"
+              >
+                <AspectRatio />
+              </IconButton>
+
+              <IconButton
+                onClick={handleAudioTrackClick}
+                sx={{ color: "#fff" }}
+                title="Audio Track"
+              >
+                <GraphicEq />
+              </IconButton>
+
               <IconButton onClick={handleFullscreen} sx={{ color: "#fff" }}>
                 {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
               </IconButton>
@@ -556,6 +660,75 @@ export default function VideoPlayer({
           </Box>
         </Box>
       )}
+
+      <Menu
+        anchorEl={aspectMenuAnchor}
+        open={Boolean(aspectMenuAnchor)}
+        onClose={handleAspectRatioClose}
+        container={containerRef.current}
+        PaperProps={{
+          sx: {
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            color: "#fff",
+            backdropFilter: "blur(10px)",
+          },
+        }}
+      >
+        {aspectRatios.map((ratio) => (
+          <MenuItem
+            key={ratio.value}
+            onClick={() => handleAspectRatioChange(ratio.value)}
+            selected={aspectRatio === ratio.value}
+            sx={{
+              "&.Mui-selected": {
+                backgroundColor: "rgba(255, 215, 0, 0.2)",
+              },
+              "&:hover": {
+                backgroundColor: "rgba(255, 255, 255, 0.1)",
+              },
+            }}
+          >
+            {ratio.label}
+          </MenuItem>
+        ))}
+      </Menu>
+
+      <Menu
+        anchorEl={audioMenuAnchor}
+        open={Boolean(audioMenuAnchor)}
+        onClose={handleAudioTrackClose}
+        container={containerRef.current}
+        PaperProps={{
+          sx: {
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            color: "#fff",
+            backdropFilter: "blur(10px)",
+          },
+        }}
+      >
+        {audioTracks.map((track) => (
+          <MenuItem
+            key={track.index}
+            onClick={() => handleAudioTrackChange(track.index)}
+            selected={selectedAudioTrack === track.index}
+            disabled={audioTracks.length === 1}
+            sx={{
+              "&.Mui-selected": {
+                backgroundColor: "rgba(255, 215, 0, 0.2)",
+              },
+              "&:hover": {
+                backgroundColor:
+                  audioTracks.length > 1
+                    ? "rgba(255, 255, 255, 0.1)"
+                    : "transparent",
+              },
+            }}
+          >
+            {track.label}
+            {track.language !== "unknown" && ` (${track.language})`}
+          </MenuItem>
+        ))}
+      </Menu>
     </Box>
   );
 }

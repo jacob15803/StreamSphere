@@ -1,4 +1,3 @@
-// src/components/common/MediaCard.js
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useRouter } from "next/router";
@@ -18,7 +17,11 @@ import {
   checkInWatchlist,
 } from "@/redux/actions/watchlistActions";
 
-export default function MediaCard({ media, showWatchlistButton = true }) {
+export default function MediaCard({
+  media,
+  showWatchlistButton = true,
+  continueWatchingData = null, // NEW: Pass continue watching data
+}) {
   const router = useRouter();
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((state) => state.auth);
@@ -26,7 +29,6 @@ export default function MediaCard({ media, showWatchlistButton = true }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Check if media is in watchlist when component mounts
     if (isAuthenticated && showWatchlistButton) {
       checkWatchlistStatus();
     }
@@ -40,10 +42,9 @@ export default function MediaCard({ media, showWatchlistButton = true }) {
   };
 
   const handleWatchlistToggle = async (e) => {
-    e.stopPropagation(); // Prevent card click event
+    e.stopPropagation();
 
     if (!isAuthenticated) {
-      // TODO: Open auth modal
       return;
     }
 
@@ -65,8 +66,19 @@ export default function MediaCard({ media, showWatchlistButton = true }) {
   };
 
   const handleCardClick = () => {
-    // Navigate to player page
-    router.push(`/watch/${media._id}`);
+    // FIXED: If this is from continue watching and has episode data, navigate with query params
+    if (continueWatchingData && media.type === "series") {
+      router.push({
+        pathname: `/watch/${media._id}`,
+        query: {
+          season: continueWatchingData.seasonNumber,
+          episode: continueWatchingData.episodeNumber,
+          time: continueWatchingData.lastWatchedTime || 0,
+        },
+      });
+    } else {
+      router.push(`/watch/${media._id}`);
+    }
   };
 
   return (
@@ -96,7 +108,6 @@ export default function MediaCard({ media, showWatchlistButton = true }) {
         },
       }}
     >
-      {/* Poster Image */}
       <CardMedia
         component="img"
         height="240"
@@ -107,7 +118,6 @@ export default function MediaCard({ media, showWatchlistButton = true }) {
         }}
       />
 
-      {/* Watchlist Button */}
       {showWatchlistButton && isAuthenticated && (
         <Tooltip
           title={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
@@ -141,7 +151,6 @@ export default function MediaCard({ media, showWatchlistButton = true }) {
         </Tooltip>
       )}
 
-      {/* Overlay Content - Shows on Hover */}
       <CardContent
         className="card-overlay"
         sx={{
@@ -156,7 +165,6 @@ export default function MediaCard({ media, showWatchlistButton = true }) {
           transition: "opacity 0.3s ease",
         }}
       >
-        {/* Title */}
         <Typography
           variant="h6"
           component="div"
@@ -176,7 +184,21 @@ export default function MediaCard({ media, showWatchlistButton = true }) {
           {media.name}
         </Typography>
 
-        {/* Rating */}
+        {/* Show episode info if continue watching */}
+        {continueWatchingData && media.type === "series" && (
+          <Typography
+            variant="body2"
+            sx={{
+              fontSize: "0.75rem",
+              color: "#ffd700",
+              mb: 0.5,
+            }}
+          >
+            S{continueWatchingData.seasonNumber}:E
+            {continueWatchingData.episodeNumber}
+          </Typography>
+        )}
+
         {media.rating && (
           <Typography
             variant="body2"
@@ -190,7 +212,6 @@ export default function MediaCard({ media, showWatchlistButton = true }) {
           </Typography>
         )}
 
-        {/* Genres */}
         <Typography
           variant="body2"
           sx={{

@@ -1,4 +1,3 @@
-// src/pages/watch/[id].js - FIXED VERSION WITH PREMIUM CHECK
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useDispatch, useSelector } from "react-redux";
@@ -16,9 +15,11 @@ import {
   CardContent,
   Button,
   IconButton,
+  Stack,
 } from "@mui/material";
-import { PlayArrow, Login, Close, Stars } from "@mui/icons-material";
+import { PlayArrow, Login, Close, Stars, Download } from "@mui/icons-material";
 import VideoPlayer from "@/components/player/VideoPlayer";
+import AuthModal from "@/components/auth/AuthModal";
 import { mediaService } from "@/services/mediaService";
 import { updateWatchHistory } from "@/redux/actions/watchHistoryActions";
 import { authUtils } from "@/services/authService";
@@ -28,9 +29,13 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
 function WatchPage() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const { id } = router.query;
+  const {
+    id,
+    season: querySeason,
+    episode: queryEpisode,
+    time: queryTime,
+  } = router.query;
 
-  // ✅ Get auth state AND subscription status
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const { currentSubscription } = useSelector((state) => state.subscription);
 
@@ -49,12 +54,15 @@ function WatchPage() {
   // Continue watching state
   const [initialTime, setInitialTime] = useState(0);
 
-  // ✅ Check if user has premium access
-  const isPremium = currentSubscription?.isPremium || false;
-
-  // ✅ Track if we're showing trailer only
+  // Check premium status from multiple sources
+  const isPremium =
+    currentSubscription?.isPremium ||
+    (user?.subscription?.plan === "premium" &&
+      user?.subscription?.status === "active") ||
+    false;
   const [isTrailerOnly, setIsTrailerOnly] = useState(false);
-  const [showOverlay, setShowOverlay] = useState(true);
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // Fetch media details
   useEffect(() => {
@@ -65,7 +73,6 @@ function WatchPage() {
         setLoading(true);
         setError(null);
 
-        // Get media details
         const mediaData = await mediaService.getSingleMedia(id);
         if (!mediaData.success) {
           throw new Error("Media not found");
@@ -73,52 +80,79 @@ function WatchPage() {
 
         setMedia(mediaData.data);
 
-        // ✅ CHECK 1: If user is NOT logged in - SHOW TRAILER
+        // CHECK 1: If user is NOT logged in - SHOW TRAILER
         if (!isAuthenticated) {
           setIsTrailerOnly(true);
+          setShowOverlay(true);
           await loadTrailer(id);
           setLoading(false);
           return;
         }
 
-        // ✅ CHECK 2: If user is logged in but NOT premium - SHOW TRAILER
+        // CHECK 2: If user is logged in but NOT premium - SHOW TRAILER
         if (isAuthenticated && !isPremium) {
           setIsTrailerOnly(true);
+          setShowOverlay(true);
           await loadTrailer(id);
           setLoading(false);
           return;
         }
 
-        // ✅ CHECK 3: User is logged in AND has premium - LOAD FULL CONTENT
+        // CHECK 3: User is logged in AND has premium - LOAD FULL CONTENT
         if (isAuthenticated && isPremium) {
           if (mediaData.data.type === "series") {
             const episodesData = await mediaService.getEpisodes(id);
             if (episodesData.success) {
-              // Get unique seasons
               const uniqueSeasons = [
                 ...new Set(episodesData.data.map((ep) => ep.seasonNumber)),
               ].sort((a, b) => a - b);
               setSeasons(uniqueSeasons);
 
-              // Set episodes for first season
-              const season1Episodes = episodesData.data.filter(
-                (ep) => ep.seasonNumber === 1
-              );
-              setEpisodes(season1Episodes);
+              let episodeToPlay = null;
+              let seasonToSelect = 1;
 
-              // Auto-select first episode
-              if (season1Episodes.length > 0) {
-                setSelectedEpisode(season1Episodes[0]);
-                await loadEpisodeVideo(id, season1Episodes[0]._id);
+              // Priority 1: Query params (from continue watching click)
+              if (querySeason && queryEpisode) {
+                seasonToSelect = parseInt(querySeason);
+                episodeToPlay = episodesData.data.find(
+                  (ep) =>
+                    ep.seasonNumber === parseInt(querySeason) &&
+                    ep.episodeNumber === parseInt(queryEpisode),
+                );
+
+                if (queryTime) {
+                  setInitialTime(parseFloat(queryTime));
+                }
+              }
+
+              // Priority 2: First episode of first season
+              if (!episodeToPlay) {
+                seasonToSelect = uniqueSeasons[0] || 1;
+                const seasonEpisodes = episodesData.data.filter(
+                  (ep) => ep.seasonNumber === seasonToSelect,
+                );
+                episodeToPlay = seasonEpisodes[0];
+              }
+
+              setSelectedSeason(seasonToSelect);
+              setEpisodes(
+                episodesData.data.filter(
+                  (ep) => ep.seasonNumber === seasonToSelect,
+                ),
+              );
+
+              if (episodeToPlay) {
+                setSelectedEpisode(episodeToPlay);
+                await loadEpisodeVideo(id, episodeToPlay._id);
               }
             }
           } else {
-            // For movies, load video directly
             await loadMovieVideo(id);
           }
 
-          // Check for continue watching progress
-          await checkContinueWatching(id);
+          if (!querySeason && !queryEpisode) {
+            await checkContinueWatching(id);
+          }
         }
       } catch (err) {
         console.error("Error fetching media:", err);
@@ -129,18 +163,16 @@ function WatchPage() {
     };
 
     fetchMedia();
-  }, [id, isAuthenticated, isPremium]);
+  }, [id, isAuthenticated, isPremium, querySeason, queryEpisode, queryTime]);
 
-  // ✅ Load trailer (for non-premium users)
   const loadTrailer = async (mediaId) => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/v1/video/public-trailer/${mediaId}`
+        `${API_BASE_URL}/api/v1/video/public-trailer/${mediaId}`,
       );
       const data = await response.json();
 
       if (data.success && data.trailerUrl) {
-        console.log("Trailer loaded successfully");
         setVideoUrl(data.trailerUrl);
       } else {
         throw new Error(data.message || "Trailer not available");
@@ -151,7 +183,6 @@ function WatchPage() {
     }
   };
 
-  // Load movie video URL (premium only)
   const loadMovieVideo = async (mediaId) => {
     try {
       const token = authUtils.getToken();
@@ -161,7 +192,7 @@ function WatchPage() {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
       const data = await response.json();
 
@@ -172,13 +203,11 @@ function WatchPage() {
       }
     } catch (err) {
       console.error("Error loading movie video:", err);
-      // If premium content fails, fallback to trailer
       await loadTrailer(mediaId);
       setIsTrailerOnly(true);
     }
   };
 
-  // Load episode video URL (premium only)
   const loadEpisodeVideo = async (mediaId, episodeId) => {
     try {
       const token = authUtils.getToken();
@@ -188,7 +217,7 @@ function WatchPage() {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
       const data = await response.json();
 
@@ -199,13 +228,11 @@ function WatchPage() {
       }
     } catch (err) {
       console.error("Error loading episode video:", err);
-      // If premium content fails, fallback to trailer
       await loadTrailer(mediaId);
       setIsTrailerOnly(true);
     }
   };
 
-  // Check continue watching progress
   const checkContinueWatching = async (mediaId) => {
     if (!isAuthenticated || !isPremium) return;
 
@@ -220,10 +247,10 @@ function WatchPage() {
 
       if (data.success && data.continueWatching) {
         const item = data.continueWatching.find(
-          (item) => item.media._id === mediaId
+          (item) => item.media._id === mediaId,
         );
-        if (item && item.progress > 0) {
-          setInitialTime(item.progress);
+        if (item && item.lastWatchedTime > 0) {
+          setInitialTime(item.lastWatchedTime);
         }
       }
     } catch (err) {
@@ -231,7 +258,6 @@ function WatchPage() {
     }
   };
 
-  // Handle season change (premium only)
   const handleSeasonChange = async (event, newSeason) => {
     if (!isPremium) {
       router.push("/subscription");
@@ -240,11 +266,14 @@ function WatchPage() {
 
     setSelectedSeason(newSeason);
     try {
-      const episodesData = await mediaService.getEpisodes(id, newSeason);
+      const episodesData = await mediaService.getEpisodes(id);
       if (episodesData.success) {
-        setEpisodes(episodesData.data.episodes);
-        if (episodesData.data.episodes.length > 0) {
-          const firstEp = episodesData.data.episodes[0];
+        const seasonEpisodes = episodesData.data.filter(
+          (ep) => ep.seasonNumber === newSeason,
+        );
+        setEpisodes(seasonEpisodes);
+        if (seasonEpisodes.length > 0) {
+          const firstEp = seasonEpisodes[0];
           setSelectedEpisode(firstEp);
           await loadEpisodeVideo(id, firstEp._id);
         }
@@ -254,7 +283,6 @@ function WatchPage() {
     }
   };
 
-  // Handle episode selection (premium only)
   const handleEpisodeSelect = async (episode) => {
     if (!isPremium) {
       router.push("/subscription");
@@ -266,7 +294,6 @@ function WatchPage() {
     setInitialTime(0);
   };
 
-  // Handle progress tracking (premium only)
   const handleProgress = async (currentTime, duration) => {
     if (!media || !id || !duration || !isAuthenticated || !isPremium) return;
 
@@ -279,19 +306,18 @@ function WatchPage() {
           seasonNumber: selectedEpisode?.seasonNumber || null,
           episodeNumber: selectedEpisode?.episodeNumber || null,
           progress: progressPercent,
+          lastWatchedTime: currentTime,
           completed: progressPercent >= 95,
-        })
+        }),
       );
     } catch (err) {
       console.error("Error saving progress:", err);
     }
   };
 
-  // Handle video end (premium only)
   const handleVideoEnd = () => {
     if (!isAuthenticated || !isPremium) return;
 
-    // Mark as completed
     if (media && id) {
       dispatch(
         updateWatchHistory({
@@ -300,14 +326,13 @@ function WatchPage() {
           episodeNumber: selectedEpisode?.episodeNumber || null,
           progress: 100,
           completed: true,
-        })
+        }),
       );
     }
 
-    // Auto-play next episode for series
     if (media?.type === "series" && selectedEpisode) {
       const currentIndex = episodes.findIndex(
-        (ep) => ep._id === selectedEpisode._id
+        (ep) => ep._id === selectedEpisode._id,
       );
       if (currentIndex < episodes.length - 1) {
         handleEpisodeSelect(episodes[currentIndex + 1]);
@@ -315,13 +340,16 @@ function WatchPage() {
     }
   };
 
-  // ✅ Handle action button clicks
   const handleActionClick = () => {
     if (!isAuthenticated) {
-      router.push("/login");
+      setAuthModalOpen(true);
     } else {
       router.push("/subscription");
     }
+  };
+
+  const handleCloseAuthModal = () => {
+    setAuthModalOpen(false);
   };
 
   if (loading) {
@@ -359,302 +387,351 @@ function WatchPage() {
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "#000",
-        pt: 8,
-      }}
-    >
-      {/* Video Player */}
+    <>
       <Box
         sx={{
-          width: "100%",
-          height: { xs: "50vh", md: "80vh" },
-          backgroundColor: "#000",
-          position: "relative",
+          minHeight: "100vh",
+          bgcolor: "#000",
+          pt: 8,
         }}
       >
-        {videoUrl ? (
-          <VideoPlayer
-            videoUrl={videoUrl}
-            posterUrl={media.posterUrl}
-            onProgress={handleProgress}
-            initialTime={initialTime}
-            onEnded={handleVideoEnd}
-            autoPlay={isPremium}
-          />
-        ) : (
-          <Box
-            sx={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Typography sx={{ color: "#fff" }}>Loading video...</Typography>
-          </Box>
-        )}
-
-        {/* ✅ OVERLAY for non-premium users (logged in or not) */}
-        {isTrailerOnly && showOverlay && (
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 80,
-              background: "rgba(0, 0, 0, 0.5)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 2,
-              zIndex: 5,
-              pointerEvents: "none",
-            }}
-          >
+        {/* Video Player */}
+        <Box
+          sx={{
+            width: "100%",
+            height: { xs: "50vh", md: "80vh" },
+            backgroundColor: "#000",
+            position: "relative",
+          }}
+        >
+          {videoUrl ? (
+            <VideoPlayer
+              videoUrl={videoUrl}
+              posterUrl={media.posterUrl}
+              onProgress={handleProgress}
+              initialTime={initialTime}
+              onEnded={handleVideoEnd}
+              autoPlay={isPremium}
+              shouldTrackProgress={isPremium && !isTrailerOnly}
+            />
+          ) : (
             <Box
               sx={{
-                pointerEvents: "auto",
+                width: "100%",
+                height: "100%",
                 display: "flex",
-                flexDirection: "column",
                 alignItems: "center",
-                gap: 2,
-                backgroundColor: "rgba(0, 0, 0, 0.9)",
-                padding: 4,
-                borderRadius: 2,
-                backdropFilter: "blur(10px)",
-                position: "relative",
-                minWidth: { xs: "90%", sm: "500px" },
+                justifyContent: "center",
               }}
             >
-              {/* Close Button */}
-              <IconButton
-                onClick={() => setShowOverlay(false)}
-                sx={{
-                  position: "absolute",
-                  top: 8,
-                  right: 8,
-                  color: "rgba(255, 255, 255, 0.7)",
-                  "&:hover": {
-                    color: "#fff",
-                    backgroundColor: "rgba(255, 255, 255, 0.1)",
-                  },
-                }}
-              >
-                <Close />
-              </IconButton>
-
-              <Typography
-                variant="h4"
-                sx={{
-                  color: "#fff",
-                  fontWeight: 600,
-                  textAlign: "center",
-                  px: 2,
-                }}
-              >
-                {!isAuthenticated ? "This is a Trailer" : "Premium Content"}
-              </Typography>
-              <Typography
-                variant="h6"
-                sx={{
-                  color: "rgba(255, 255, 255, 0.8)",
-                  textAlign: "center",
-                  px: 2,
-                  mb: 2,
-                }}
-              >
-                {!isAuthenticated
-                  ? `Login to watch the full ${
-                      media.type === "series" ? "series" : "movie"
-                    }`
-                  : `Upgrade to Premium to watch the full ${
-                      media.type === "series" ? "series" : "movie"
-                    }`}
-              </Typography>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={!isAuthenticated ? <Login /> : <Stars />}
-                onClick={handleActionClick}
-                sx={{
-                  backgroundColor: "#ffd700",
-                  color: "#000",
-                  fontWeight: 600,
-                  px: 4,
-                  py: 1.5,
-                  fontSize: "1.1rem",
-                  "&:hover": {
-                    backgroundColor: "#ffed4e",
-                    transform: "scale(1.05)",
-                  },
-                  transition: "all 0.3s ease",
-                }}
-              >
-                {!isAuthenticated ? "Login to Watch" : "Upgrade to Premium"}
-              </Button>
-            </Box>
-          </Box>
-        )}
-      </Box>
-
-      {/* Media Information */}
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* Title and Details */}
-        <Box sx={{ mb: 4 }}>
-          <Typography
-            variant="h4"
-            sx={{
-              color: "#fff",
-              fontWeight: 600,
-              mb: 2,
-            }}
-          >
-            {media.name}
-            {media.type === "series" && selectedEpisode && isPremium && (
-              <Typography
-                component="span"
-                sx={{ color: "#ffd700", ml: 2, fontSize: "1.2rem" }}
-              >
-                S{selectedEpisode.seasonNumber}:E{selectedEpisode.episodeNumber}{" "}
-                - {selectedEpisode.title}
-              </Typography>
-            )}
-          </Typography>
-
-          <Box sx={{ display: "flex", gap: 2, mb: 2, flexWrap: "wrap" }}>
-            <Typography sx={{ color: "rgba(255, 255, 255, 0.7)" }}>
-              {new Date(media.releaseDate).getFullYear()}
-            </Typography>
-            {media.duration && (
-              <Typography sx={{ color: "rgba(255, 255, 255, 0.7)" }}>
-                {media.duration} min
-              </Typography>
-            )}
-            {media.rating && (
-              <Typography sx={{ color: "#ffd700" }}>
-                ★ {media.rating}
-              </Typography>
-            )}
-          </Box>
-
-          <Typography
-            sx={{
-              color: "rgba(255, 255, 255, 0.9)",
-              fontSize: "1rem",
-              lineHeight: 1.6,
-              mb: 2,
-            }}
-          >
-            {media.description}
-          </Typography>
-
-          {media.genres && media.genres.length > 0 && (
-            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-              {media.genres.map((genre, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    px: 2,
-                    py: 0.5,
-                    bgcolor: "rgba(255, 215, 0, 0.2)",
-                    borderRadius: 1,
-                    color: "#ffd700",
-                    fontSize: "0.875rem",
-                  }}
-                >
-                  {genre}
-                </Box>
-              ))}
+              <Typography sx={{ color: "#fff" }}>Loading video...</Typography>
             </Box>
           )}
 
-          {/* ✅ Show appropriate prompt based on auth/premium status */}
-          {isTrailerOnly && (
-            <Box sx={{ mt: 3 }}>
-              <Alert
-                severity="info"
+          {/* Overlay for non-premium users */}
+          {isTrailerOnly && showOverlay && (
+            <Box
+              sx={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 80,
+                background: "rgba(0, 0, 0, 0.5)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 2,
+                zIndex: 5,
+                pointerEvents: "none",
+              }}
+            >
+              <Box
                 sx={{
-                  backgroundColor: "rgba(255, 215, 0, 0.1)",
-                  color: "#ffd700",
-                  border: "1px solid #ffd700",
+                  pointerEvents: "auto",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 2,
+                  backgroundColor: "rgba(0, 0, 0, 0.9)",
+                  padding: 4,
+                  borderRadius: 2,
+                  backdropFilter: "blur(10px)",
+                  position: "relative",
+                  minWidth: { xs: "90%", sm: "500px" },
                 }}
               >
-                {!isAuthenticated
-                  ? "Login to access all episodes and track your watch history"
-                  : "Upgrade to Premium to access full episodes and exclusive content"}
-              </Alert>
+                <IconButton
+                  onClick={() => setShowOverlay(false)}
+                  sx={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    color: "rgba(255, 255, 255, 0.7)",
+                    "&:hover": {
+                      color: "#fff",
+                      backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    },
+                  }}
+                >
+                  <Close />
+                </IconButton>
+
+                <Typography
+                  variant="h4"
+                  sx={{
+                    color: "#fff",
+                    fontWeight: 600,
+                    textAlign: "center",
+                    px: 2,
+                  }}
+                >
+                  {!isAuthenticated ? "This is a Trailer" : "Premium Content"}
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: "rgba(255, 255, 255, 0.8)",
+                    textAlign: "center",
+                    px: 2,
+                    mb: 2,
+                  }}
+                >
+                  {!isAuthenticated
+                    ? `Login to watch the full ${
+                        media.type === "series" ? "series" : "movie"
+                      }`
+                    : `Upgrade to Premium to watch the full ${
+                        media.type === "series" ? "series" : "movie"
+                      }`}
+                </Typography>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={!isAuthenticated ? <Login /> : <Stars />}
+                  onClick={handleActionClick}
+                  sx={{
+                    backgroundColor: "#ffd700",
+                    color: "#000",
+                    fontWeight: 600,
+                    px: 4,
+                    py: 1.5,
+                    fontSize: "1.1rem",
+                    "&:hover": {
+                      backgroundColor: "#ffed4e",
+                      transform: "scale(1.05)",
+                    },
+                    transition: "all 0.3s ease",
+                  }}
+                >
+                  {!isAuthenticated ? "Login to Watch" : "Upgrade to Premium"}
+                </Button>
+              </Box>
             </Box>
           )}
         </Box>
 
-        {/* Episodes (for series) - Only show full episodes if premium */}
-        {media.type === "series" && seasons.length > 0 && isPremium && (
-          <Box>
+        {/* Media Information */}
+        <Container maxWidth="xl" sx={{ py: 4 }}>
+          <Box sx={{ mb: 4 }}>
             <Typography
-              variant="h5"
+              variant="h4"
               sx={{
                 color: "#fff",
                 fontWeight: 600,
-                mb: 3,
+                mb: 2,
               }}
             >
-              Episodes
+              {media.name}
+              {media.type === "series" && selectedEpisode && isPremium && (
+                <Typography
+                  component="span"
+                  sx={{ color: "#ffd700", ml: 2, fontSize: "1.2rem" }}
+                >
+                  S{selectedEpisode.seasonNumber}:E
+                  {selectedEpisode.episodeNumber} - {selectedEpisode.title}
+                </Typography>
+              )}
             </Typography>
 
-            {/* Season Tabs */}
-            <Tabs
-              value={selectedSeason}
-              onChange={handleSeasonChange}
+            <Box sx={{ display: "flex", gap: 2, mb: 2, flexWrap: "wrap" }}>
+              <Typography sx={{ color: "rgba(255, 255, 255, 0.7)" }}>
+                {new Date(media.releaseDate).getFullYear()}
+              </Typography>
+              {media.duration && (
+                <Typography sx={{ color: "rgba(255, 255, 255, 0.7)" }}>
+                  {media.duration} min
+                </Typography>
+              )}
+              {media.rating && (
+                <Typography sx={{ color: "#ffd700" }}>
+                  ★ {media.rating}
+                </Typography>
+              )}
+            </Box>
+
+            <Typography
               sx={{
-                mb: 3,
-                "& .MuiTab-root": {
-                  color: "rgba(255, 255, 255, 0.6)",
-                  "&.Mui-selected": {
-                    color: "#ffd700",
-                  },
-                },
-                "& .MuiTabs-indicator": {
-                  backgroundColor: "#ffd700",
-                },
+                color: "rgba(255, 255, 255, 0.9)",
+                fontSize: "1rem",
+                lineHeight: 1.6,
+                mb: 2,
               }}
             >
-              {seasons.map((season) => (
-                <Tab key={season} label={`Season ${season}`} value={season} />
-              ))}
-            </Tabs>
+              {media.description}
+            </Typography>
 
-            {/* Episode Grid */}
-            <Grid container spacing={2}>
-              {episodes.map((episode) => (
-                <Grid item xs={12} sm={6} md={4} lg={3} key={episode._id}>
+            {media.genres && media.genres.length > 0 && (
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                {media.genres.map((genre, index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      px: 2,
+                      py: 0.5,
+                      bgcolor: "rgba(255, 215, 0, 0.2)",
+                      borderRadius: 1,
+                      color: "#ffd700",
+                      fontSize: "0.875rem",
+                    }}
+                  >
+                    {genre}
+                  </Box>
+                ))}
+              </Box>
+            )}
+
+            {/* FIXED: Only show for non-premium users */}
+            {isTrailerOnly && !isPremium && (
+              <Box sx={{ mt: 3 }}>
+                <Alert
+                  severity="info"
+                  sx={{
+                    backgroundColor: "rgba(255, 215, 0, 0.1)",
+                    color: "#ffd700",
+                    border: "1px solid #ffd700",
+                  }}
+                >
+                  {!isAuthenticated
+                    ? "Login to access all episodes and track your watch history"
+                    : "Upgrade to Premium to access full episodes and exclusive content"}
+                </Alert>
+              </Box>
+            )}
+          </Box>
+
+          {/* Episodes - IMPROVED LAYOUT */}
+          {media.type === "series" && seasons.length > 0 && isPremium && (
+            <Box>
+              <Typography
+                variant="h5"
+                sx={{
+                  color: "#fff",
+                  fontWeight: 600,
+                  mb: 3,
+                }}
+              >
+                Episodes
+              </Typography>
+
+              <Box
+                sx={{
+                  borderBottom: 1,
+                  borderColor: "rgba(255, 255, 255, 0.1)",
+                  mb: 3,
+                }}
+              >
+                <Tabs
+                  value={selectedSeason}
+                  onChange={handleSeasonChange}
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  sx={{
+                    "& .MuiTab-root": {
+                      color: "rgba(255, 255, 255, 0.6)",
+                      fontSize: "1rem",
+                      fontWeight: 500,
+                      minWidth: 120,
+                      "&.Mui-selected": {
+                        color: "#ffd700",
+                      },
+                    },
+                    "& .MuiTabs-indicator": {
+                      backgroundColor: "#ffd700",
+                      height: 3,
+                    },
+                    "& .MuiTabs-scrollButtons": {
+                      color: "#fff",
+                    },
+                  }}
+                >
+                  {seasons.map((season) => (
+                    <Tab
+                      key={season}
+                      label={`Season ${season}`}
+                      value={season}
+                    />
+                  ))}
+                </Tabs>
+              </Box>
+
+              {/* Horizontal Scrollable Episode List */}
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 2,
+                  overflowX: "auto",
+                  pb: 2,
+                  "&::-webkit-scrollbar": {
+                    height: 8,
+                  },
+                  "&::-webkit-scrollbar-track": {
+                    backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    borderRadius: 4,
+                  },
+                  "&::-webkit-scrollbar-thumb": {
+                    backgroundColor: "#ffd700",
+                    borderRadius: 4,
+                  },
+                }}
+              >
+                {episodes.map((episode) => (
                   <Card
+                    key={episode._id}
                     onClick={() => handleEpisodeSelect(episode)}
                     sx={{
+                      minWidth: 280,
+                      maxWidth: 280,
                       backgroundColor: "#1a1a1a",
                       cursor: "pointer",
                       border:
                         selectedEpisode?._id === episode._id
                           ? "2px solid #ffd700"
                           : "1px solid rgba(255, 255, 255, 0.1)",
+                      borderRadius: 2,
                       transition: "all 0.3s ease",
+                      flexShrink: 0,
                       "&:hover": {
                         transform: "translateY(-4px)",
                         boxShadow: "0 8px 16px rgba(0, 0, 0, 0.5)",
+                        borderColor: "#ffd700",
                       },
                     }}
                   >
-                    <Box sx={{ position: "relative" }}>
+                    <Box sx={{ position: "relative", paddingTop: "56.25%" }}>
                       <CardMedia
                         component="img"
-                        height="140"
                         image={episode.thumbnailUrl || media.posterUrl}
                         alt={episode.title}
+                        sx={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
                       />
                       <Box
                         sx={{
@@ -662,144 +739,162 @@ function WatchPage() {
                           top: "50%",
                           left: "50%",
                           transform: "translate(-50%, -50%)",
+                          opacity: 0.9,
+                          transition: "opacity 0.3s ease",
+                          "&:hover": {
+                            opacity: 1,
+                          },
                         }}
                       >
                         <PlayArrow
                           sx={{
-                            fontSize: 50,
+                            fontSize: 48,
                             color: "#fff",
-                            opacity: 0.8,
+                            filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))",
                           }}
                         />
                       </Box>
                     </Box>
-                    <CardContent>
-                      <Typography
-                        variant="body2"
-                        sx={{ color: "#ffd700", mb: 0.5 }}
-                      >
-                        Episode {episode.episodeNumber}
-                      </Typography>
-                      <Typography
-                        variant="subtitle2"
-                        sx={{
-                          color: "#fff",
-                          fontWeight: 600,
-                          mb: 1,
-                        }}
-                      >
-                        {episode.title}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "rgba(255, 255, 255, 0.7)",
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {episode.description}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "rgba(255, 255, 255, 0.5)",
-                          display: "block",
-                          mt: 1,
-                        }}
-                      >
-                        {episode.duration} min
-                      </Typography>
+                    <CardContent sx={{ p: 2 }}>
+                      <Stack spacing={0.5}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "#ffd700",
+                            fontWeight: 600,
+                            fontSize: "0.75rem",
+                          }}
+                        >
+                          S{episode.seasonNumber} E{episode.episodeNumber}
+                        </Typography>
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            color: "#fff",
+                            fontWeight: 600,
+                            fontSize: "0.95rem",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {episode.title}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "rgba(255, 255, 255, 0.7)",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                            lineHeight: 1.4,
+                            fontSize: "0.75rem",
+                            minHeight: "2.1em",
+                          }}
+                        >
+                          {episode.description}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "rgba(255, 255, 255, 0.5)",
+                            fontSize: "0.7rem",
+                          }}
+                        >
+                          {episode.duration} min
+                        </Typography>
+                      </Stack>
                     </CardContent>
                   </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </Box>
-        )}
-
-        {/* ✅ Show blurred episodes section for non-premium users */}
-        {media.type === "series" && !isPremium && (
-          <Box
-            sx={{
-              position: "relative",
-              mt: 4,
-            }}
-          >
-            <Typography
-              variant="h5"
-              sx={{
-                color: "#fff",
-                fontWeight: 600,
-                mb: 3,
-              }}
-            >
-              Episodes
-            </Typography>
-
-            <Box
-              sx={{
-                filter: "blur(8px)",
-                pointerEvents: "none",
-                opacity: 0.4,
-              }}
-            >
-              <Grid container spacing={2}>
-                {[1, 2, 3, 4].map((i) => (
-                  <Grid item xs={12} sm={6} md={4} lg={3} key={i}>
-                    <Card sx={{ backgroundColor: "#1a1a1a", height: 200 }}>
-                      <CardMedia
-                        component="div"
-                        height="140"
-                        sx={{ backgroundColor: "#333" }}
-                      />
-                      <CardContent>
-                        <Typography sx={{ color: "#fff" }}>
-                          Episode {i}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
                 ))}
-              </Grid>
+              </Box>
             </Box>
+          )}
 
+          {/* Blurred episodes for non-premium */}
+          {media.type === "series" && !isPremium && (
             <Box
               sx={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                textAlign: "center",
+                position: "relative",
+                mt: 4,
               }}
             >
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={!isAuthenticated ? <Login /> : <Stars />}
-                onClick={handleActionClick}
+              <Typography
+                variant="h5"
                 sx={{
-                  backgroundColor: "#ffd700",
-                  color: "#000",
+                  color: "#fff",
                   fontWeight: 600,
-                  px: 4,
-                  py: 1.5,
-                  "&:hover": {
-                    backgroundColor: "#ffed4e",
-                  },
+                  mb: 3,
                 }}
               >
-                {!isAuthenticated
-                  ? "Login to View Episodes"
-                  : "Upgrade to View Episodes"}
-              </Button>
+                Episodes
+              </Typography>
+
+              <Box
+                sx={{
+                  filter: "blur(8px)",
+                  pointerEvents: "none",
+                  opacity: 0.4,
+                }}
+              >
+                <Grid container spacing={2}>
+                  {[1, 2, 3, 4].map((i) => (
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={i}>
+                      <Card sx={{ backgroundColor: "#1a1a1a", height: 200 }}>
+                        <CardMedia
+                          component="div"
+                          height="140"
+                          sx={{ backgroundColor: "#333" }}
+                        />
+                        <CardContent>
+                          <Typography sx={{ color: "#fff" }}>
+                            Episode {i}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  textAlign: "center",
+                }}
+              >
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={!isAuthenticated ? <Login /> : <Stars />}
+                  onClick={handleActionClick}
+                  sx={{
+                    backgroundColor: "#ffd700",
+                    color: "#000",
+                    fontWeight: 600,
+                    px: 4,
+                    py: 1.5,
+                    "&:hover": {
+                      backgroundColor: "#ffed4e",
+                    },
+                  }}
+                >
+                  {!isAuthenticated
+                    ? "Login to View Episodes"
+                    : "Upgrade to View Episodes"}
+                </Button>
+              </Box>
             </Box>
-          </Box>
-        )}
-      </Container>
-    </Box>
+          )}
+        </Container>
+      </Box>
+
+      <AuthModal open={authModalOpen} onClose={handleCloseAuthModal} />
+    </>
   );
 }
 
